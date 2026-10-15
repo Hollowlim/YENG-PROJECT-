@@ -223,7 +223,7 @@ test("homepage product cards reflect pointer movement and retain shopping links"
     page.getByRole("heading", { name: "Core Heavyweight Tee", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
-  await expect(page.locator(".reflective-card")).toHaveCount(0);
+  await expect(page.locator(".reflective-card")).toHaveCount(3);
 });
 
 test("reflective products respect reduced motion without requesting camera access", async ({
@@ -353,16 +353,14 @@ test("admin can publish uploaded angle photos and the product viewer uses them",
   await page
     .getByLabel("Description", { exact: true })
     .fill("A product with uploaded angle photos.");
-  await page
-    .getByLabel("Upload left angle", { exact: true })
-    .setInputFiles({
-      name: "left.png",
-      mimeType: "image/png",
-      buffer: Buffer.from(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
-        "base64",
-      ),
-    });
+  await page.getByLabel("Upload left angle", { exact: true }).setInputFiles({
+    name: "left.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
   await page
     .getByLabel("right angle image URL (optional)", { exact: true })
     .fill("./public/assets/tee.png");
@@ -385,4 +383,23 @@ test("admin can publish uploaded angle photos and the product viewer uses them",
     "src",
     "./public/assets/tee.png",
   );
+});
+
+test("all sample products have three angles and reflective detail views", async ({
+  page,
+}) => {
+  for (const id of ["core-heavyweight-tee", "archive-cargo", "signature-cap"]) {
+    await page.goto("/#/product/" + id);
+    const viewer = page.getByRole("region", { name: "Product angle viewer" });
+    await expect(viewer.locator(".reflective-card")).toHaveCount(1);
+    await expect(viewer.locator("canvas")).toBeVisible();
+    for (const name of ["Left view", "Front view", "Right view"]) {
+      const button = viewer.getByRole("button", { name, exact: true });
+      await expect(button).toBeEnabled();
+      await button.click();
+      await expect(button).toHaveAttribute("aria-pressed", "true");
+    }
+  }
+  await page.goto("/#/shop");
+  await expect(page.locator(".product-image .reflective-card")).toHaveCount(3);
 });

@@ -1,8 +1,9 @@
 /* Product-specific presentation. The registry component itself is unchanged. */
-.home-products .product-image {
+.product-image {
   overflow: visible;
 }
-.home-products .crownetic-reflective-product {
+.product-image .crownetic-reflective-product,
+.viewer-stage > .crownetic-reflective-product {
   position: absolute;
   inset: 0;
 }
@@ -33,4 +34,15 @@
 .crownetic-reflective-product .product-badge,
 .crownetic-reflective-product .product-open {
   color: var(--ink);
+}
+
+.viewer-stage .reflective-card__body {
+  cursor: grab;
+}
+.viewer-stage .reflective-card__canvas {
+  pointer-events: none;
+}
+.viewer-stage .reflective-card__content,
+.viewer-stage .reflective-product-photo {
+  height: 100%;
 }

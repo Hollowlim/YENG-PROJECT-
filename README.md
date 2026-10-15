@@ -102,3 +102,9 @@ The original ambient waves now form a fixed, page-wide background on customer ro
 Open the Core Heavyweight Tee to view the illustrative model from the **left, front and right**. Use angle buttons, previous/next arrows, keyboard arrow keys or a horizontal swipe/drag. These are three photographs, not a live 3D garment renderer. Products without side photography keep their front image and disable missing angles.
 
 Admin now has optional left/right image URLs and uploads; the existing primary image supplies the front view. Replacing the sample photography switches to those uploaded images. Angle photos persist alongside products in local demo storage. For connected Supabase projects, run `supabase/002_product_angles.sql` after `001_catalog.sql` before saving products with the new editor. Live Supabase verification remains pending project configuration.
+
+## All-item views and reflections
+
+All three existing sample products (tee, cargo trousers and cap) include distinct illustrative left/front/right images. The same ReflectiveCard effect now wraps homepage cards, shop cards and each large angle viewer. Tilt, shine, keyboard navigation and swipe controls work together; camera capture remains disabled. The pasted component source matches the existing upstream JSX.
+
+For new admin products, supply the main/front photo plus left/right URLs or uploads. Missing photos remain visibly unavailable rather than showing a repeated front image as another angle. Older untouched demo products receive their new sample views automatically; customized angle uploads are preserved.

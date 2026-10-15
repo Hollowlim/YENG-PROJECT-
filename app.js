@@ -159,8 +159,8 @@ async function render({ scroll = true } = {}) {
     app.innerHTML = shell(content);
     if (path === "/") {
       mountScrollEffect();
-      mountProductEffects();
     }
+    mountProductEffects();
     if (path.startsWith("/product/")) mountProductViewer();
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);

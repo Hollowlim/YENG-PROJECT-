@@ -20,6 +20,7 @@ export const seed = [
   },
   {
     id: "archive-cargo",
+    view_sprite: "/assets/cargo-views.png",
     name: "Archive Cargo",
     category: "Bottoms",
     description:
@@ -37,6 +38,7 @@ export const seed = [
   },
   {
     id: "signature-cap",
+    view_sprite: "/assets/cap-views.png",
     name: "Signature Cap",
     category: "Accessories",
     description:
@@ -71,13 +73,14 @@ function local() {
       return false;
     }
   })
-    ? products.map((p) =>
-        p.id === "core-heavyweight-tee" &&
-        !Object.hasOwn(p, "view_sprite") &&
-        p.image_url.endsWith("/tee.png")
-          ? { ...p, view_sprite: seed[0].view_sprite }
-          : p,
-      )
+    ? products.map((p) => {
+        const original = seed.find((item) => item.id === p.id);
+        return original &&
+          !Object.hasOwn(p, "view_sprite") &&
+          p.image_url.split("/").pop() === original.image_url.split("/").pop()
+          ? { ...p, view_sprite: original.view_sprite }
+          : p;
+      })
     : structuredClone(seed);
 }
 export const catalog = {
