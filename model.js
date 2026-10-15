@@ -11,6 +11,7 @@ export function priceSen(value) {
 }
 export function safeImage(url) {
   if (typeof url !== "string") return false;
+  if (/^\.\/public\/assets\/[a-zA-Z0-9_./-]+$/.test(url)) return true;
   if (
     /^\/(?!\/)/.test(url) ||
     /^data:image\/(png|jpeg|webp);base64,[a-z0-9+/=]+$/i.test(url)

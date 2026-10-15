@@ -4,7 +4,10 @@ test("admin publishing flows through shop, bag, persistence and sample checkout"
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/admin");
+  await page.goto("/#/admin");
+  await page.getByLabel("Username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("admin@123");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
   await page
     .getByLabel("Product name", { exact: true })
     .fill("Studio Test Tee");
@@ -39,7 +42,10 @@ test("admin publishing flows through shop, bag, persistence and sample checkout"
   expect(errors).toEqual([]);
 });
 test("draft stays hidden and edits persist", async ({ page }) => {
-  await page.goto("/admin");
+  await page.goto("/#/admin");
+  await page.getByLabel("Username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("admin@123");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
   await page
     .getByLabel("Product name", { exact: true })
     .fill("Unreleased Draft");
@@ -119,4 +125,64 @@ test("malformed saved bag entries do not crash the site", async ({ page }) => {
     page.getByRole("heading", { name: "BUILT TO STAND APART." }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "BAG (0)" })).toBeVisible();
+});
+
+test("standalone HTML has styled storefront and functional admin login", async ({
+  page,
+}) => {
+  await page.goto("/index.html");
+  await expect(
+    page.getByRole("heading", { name: "BUILT TO STAND APART." }),
+  ).toBeVisible();
+  expect(
+    await page
+      .locator("body")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).not.toBe("rgba(0, 0, 0, 0)");
+  await page.getByRole("link", { name: "Studio / Admin" }).click();
+  await expect(
+    page.getByRole("heading", { name: "ADMIN SIGN IN." }),
+  ).toBeVisible();
+  await page.getByLabel("Username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("wrong");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
+  await expect(page.locator("#login-error")).toContainText("Incorrect");
+  await page.getByLabel("Password", { exact: true }).fill("admin@123");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "THE PRODUCT ROOM." }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Product name", { exact: true })
+    .fill("Direct File Tee");
+  await page.getByLabel("Price (MYR)").fill("99");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("A sample created from the downloaded website.");
+  await page.getByLabel("M", { exact: true }).fill("4");
+  await page.getByLabel("PUBLISHED — VISIBLE IN SHOP").check();
+  await page.getByRole("button", { name: "CREATE PRODUCT" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Direct File Tee" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
+  await expect(
+    page.getByText("Direct File Tee", { exact: true }),
+  ).toBeVisible();
+});
+
+test("sample admin sign-out closes access on refresh", async ({ page }) => {
+  await page.goto("/#/admin");
+  await page.getByLabel("Username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("admin@123");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "THE PRODUCT ROOM." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "ADMIN SIGN IN." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Product name", { exact: true })).toHaveCount(0);
 });

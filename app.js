@@ -16,6 +16,7 @@ import {
   escapeHTML as e,
 } from "./model.js";
 const app = document.querySelector("#app");
+let demoAdmin = sessionStorage.getItem("crownetic.demo.admin") === "yes";
 let products = [],
   allProducts = [],
   filter = "All",
@@ -34,7 +35,7 @@ const arrow =
 const bagIcon =
   '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 6h12l1 12H3L4 6Z"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/></svg>';
 const link = (path, text, cls = "") =>
-  `<a class="${cls}" href="${path}" data-link>${text}</a>`;
+  `<a class="${cls}" href="#${path}" data-link>${text}</a>`;
 function toast(message) {
   const t = document.querySelector("#toast");
   t.textContent = message;
@@ -88,14 +89,17 @@ function checkoutPage() {
 function about() {
   return `<section class="page"><div class="about"><span class="small-label">INDEPENDENT BY NATURE / KUALA LUMPUR</span><h1 class="page-heading">SAME CITY.<br>DIFFERENT PERSPECTIVE.</h1><img src="/assets/campaign.png" alt="CROWNETIC campaign in concrete architecture"><p>Some follow the current. Others find their own way.</p><p>CROWNETIC is a streetwear brand from Kuala Lumpur, made for a generation that doesn't need permission to stand apart.</p><p>Considered silhouettes. A quieter palette. Everyday pieces with a presence of their own. This is the first chapter.</p>${link("/shop", "DISCOVER COLLECTION 001 " + arrow, "button")}</div></section>`;
 }
+function loginPage() {
+  return `<section class="page login"><span class="small-label">CROWNETIC STUDIO / SAMPLE</span><h1 class="page-heading">ADMIN SIGN IN.</h1><p class="description">Your collection. Your creative control.</p><form id="login-form"><div class="field"><label for="login-email">${connected ? "Email" : "Username"}</label><input id="login-email" type="${connected ? "email" : "text"}" name="email" required autocomplete="username"></div><div class="field"><label for="password">Password</label><input id="password" type="password" name="password" required autocomplete="current-password"></div><p id="login-error" class="error" role="alert"></p><button class="button" type="submit">SIGN IN ${arrow}</button></form>${connected ? "" : '<p class="notice" style="margin-top:25px">Sample login: admin@123 / admin@123. This local demo login is for trying the sample, not production security.</p>'}</section>`;
+}
 async function adminPage() {
+  if (!connected && !demoAdmin) return loginPage();
   if (connected) {
     const db = await supabase();
     const {
       data: { session },
     } = await db.auth.getSession();
-    if (!session)
-      return `<section class="page login"><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading">ADMIN SIGN IN.</h1><form id="login-form"><div class="field"><label for="login-email">Email</label><input id="login-email" type="email" name="email" required autocomplete="username"></div><div class="field"><label for="password">Password</label><input id="password" type="password" name="password" required autocomplete="current-password"></div><p id="login-error" class="error" role="alert"></p><button class="button">SIGN IN ${arrow}</button></form></section>`;
+    if (!session) return loginPage();
     const { data, error } = await db
       .from("admin_users")
       .select("user_id")
@@ -106,7 +110,7 @@ async function adminPage() {
       return `<section class="page empty"><h1 class="page-heading">ADMIN ACCESS REQUIRED.</h1><p>This account does not have catalogue management permission.</p><button class="button" data-signout>Sign out</button></section>`;
   }
   allProducts = await catalog.list(true);
-  return `<section class="page"><div class="section-top"><div><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading" style="margin-bottom:0">THE PRODUCT ROOM.</h1></div>${connected ? '<button class="small-button" data-signout>SIGN OUT</button>' : '<button class="small-button" data-reset>RESET DEMO</button>'}</div><div class="notice">${connected ? "Supabase catalogue. Only authorized administrators can publish products." : "DEMO ADMIN — No login required. Changes are saved in this browser only. Publish a product here to see it in the shop."}</div><div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div></section>`;
+  return `<section class="page"><div class="section-top"><div><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading" style="margin-bottom:0">THE PRODUCT ROOM.</h1></div>${connected ? '<button class="small-button" data-signout>SIGN OUT</button>' : '<div><button class="small-button" data-reset>RESET DEMO</button> <button class="small-button" data-signout>SIGN OUT</button></div>'}</div><div class="notice">${connected ? "Supabase catalogue. Only authorized administrators can publish products." : "SAMPLE ADMIN — Signed in as admin@123. Changes are saved in this browser only. Publish a product here to see it in the shop."}</div><div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div></section>`;
 }
 function editor(p) {
   return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
@@ -118,7 +122,15 @@ async function render({ scroll = true } = {}) {
   app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
   try {
     products = await catalog.list();
-    const path = decodeURIComponent(location.pathname);
+    const path = decodeURIComponent(
+      location.hash.startsWith("#/")
+        ? location.hash.slice(1).split("?")[0]
+        : location.protocol === "file:" ||
+            location.pathname.endsWith(".html") ||
+            location.pathname.endsWith("/")
+          ? "/"
+          : location.pathname,
+    );
     let content;
     if (path === "/") content = home();
     else if (path === "/shop") content = shop();
@@ -138,10 +150,11 @@ async function render({ scroll = true } = {}) {
   }
 }
 function navigate(path) {
-  history.pushState({}, "", path);
+  history.pushState({}, "", path.startsWith("#/") ? path : `#${path}`);
   render();
 }
 window.addEventListener("popstate", () => render());
+window.addEventListener("hashchange", () => render());
 document.addEventListener("click", async (event) => {
   const anchor = event.target.closest("a[data-link]");
   if (
@@ -208,8 +221,13 @@ document.addEventListener("click", async (event) => {
       toast("Demo catalogue reset.");
     }
     if (target.hasAttribute("data-signout")) {
-      const db = await supabase();
-      await db.auth.signOut();
+      if (connected) {
+        const db = await supabase();
+        await db.auth.signOut();
+      } else {
+        demoAdmin = false;
+        sessionStorage.removeItem("crownetic.demo.admin");
+      }
       render();
     }
     if (target.hasAttribute("data-retry")) render();
@@ -304,6 +322,17 @@ document.addEventListener("submit", async (event) => {
     const button = form.querySelector("button");
     button.disabled = true;
     try {
+      if (!connected) {
+        if (
+          form.elements.email.value !== "admin@123" ||
+          form.elements.password.value !== "admin@123"
+        )
+          throw Error("Incorrect username or password.");
+        demoAdmin = true;
+        sessionStorage.setItem("crownetic.demo.admin", "yes");
+        await render();
+        return;
+      }
       const db = await supabase();
       const { error } = await db.auth.signInWithPassword({
         email: form.elements.email.value,

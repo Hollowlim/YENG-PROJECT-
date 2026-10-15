@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "dev": "vite --host 0.0.0.0 --open /source.html",
+    "build": "node scripts/build-sample.js",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
     "test:browser": "playwright test"
@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.51.0",
+    "esbuild": "^0.25.12",
     "vite": "^6.1.0"
   }
 }
