@@ -142,6 +142,7 @@ async function render({ scroll = true } = {}) {
           ? "/"
           : location.pathname,
     );
+    document.body.classList.toggle("storefront-page", path !== "/admin");
     let content;
     if (path === "/") content = home();
     else if (path === "/shop") content = shop();

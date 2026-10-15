@@ -6,53 +6,102 @@
   margin: 24px 30px 40px;
   min-height: 360px;
   justify-content: center;
-  border: 1px solid #30302f;
-  border-radius: 22px;
-  background: #0d0d10;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
-.campaign-intro::before,
-.campaign-intro::after {
-  content: '';
-  position: absolute;
+body.storefront-page::before,
+body.storefront-page::after {
+  content: "";
+  position: fixed;
   z-index: -1;
   pointer-events: none;
   width: 150%;
-  height: 220%;
+  height: 150vh;
   left: -25%;
-  top: -60%;
+  top: -25vh;
   border-radius: 50%;
   will-change: transform;
 }
-.campaign-intro::before {
+body.storefront-page::before {
   background:
-    radial-gradient(ellipse at 50% 100%, transparent 44%, #a7b8c42b 46%, #d6d4e447 47%, #9a86bd30 49%, transparent 53%),
-    radial-gradient(ellipse at 40% 10%, transparent 38%, #b6a4d323 42%, #716a9138 45%, transparent 51%);
+    radial-gradient(
+      ellipse at 50% 100%,
+      transparent 44%,
+      #a7b8c42b 46%,
+      #d6d4e447 47%,
+      #9a86bd30 49%,
+      transparent 53%
+    ),
+    radial-gradient(
+      ellipse at 40% 10%,
+      transparent 38%,
+      #b6a4d323 42%,
+      #716a9138 45%,
+      transparent 51%
+    );
   filter: blur(15px);
   transform: rotate(-16deg);
   animation: crownetic-wave-drift 19s ease-in-out infinite alternate;
 }
-.campaign-intro::after {
+body.storefront-page::after {
   background:
-    radial-gradient(ellipse at 70% 100%, transparent 49%, #868bb12e 51%, #cbd2d947 52%, #b09aba25 53%, transparent 57%),
+    radial-gradient(
+      ellipse at 70% 100%,
+      transparent 49%,
+      #868bb12e 51%,
+      #cbd2d947 52%,
+      #b09aba25 53%,
+      transparent 57%
+    ),
     radial-gradient(ellipse at 10% 20%, #70658520, transparent 45%);
   filter: blur(22px);
   transform: rotate(12deg) translate3d(5%, -8%, 0);
   animation: crownetic-wave-shimmer 23s ease-in-out infinite alternate;
 }
-.campaign-intro .small-label { color: #c3c1d0; }
-.campaign-intro p { color: #f1efe9; text-shadow: 0 2px 18px #08080b; }
-.campaign-intro .button { box-shadow: 0 4px 30px #08080b80; }
+.campaign-intro .small-label {
+  color: #c3c1d0;
+}
+.campaign-intro p {
+  color: #f1efe9;
+  text-shadow: 0 2px 18px #08080b;
+}
+.campaign-intro .button {
+  box-shadow: 0 4px 30px #08080b80;
+}
 @keyframes crownetic-wave-drift {
-  from { transform: rotate(-16deg) translate3d(-5%, 5%, 0) scale(.95); }
-  to { transform: rotate(-4deg) translate3d(8%, -9%, 0) scale(1.12); }
+  from {
+    transform: rotate(-16deg) translate3d(-5%, 5%, 0) scale(0.95);
+  }
+  to {
+    transform: rotate(-4deg) translate3d(8%, -9%, 0) scale(1.12);
+  }
 }
 @keyframes crownetic-wave-shimmer {
-  from { transform: rotate(12deg) translate3d(5%, -8%, 0); opacity: .6; }
-  to { transform: rotate(24deg) translate3d(-8%, 6%, 0); opacity: 1; }
+  from {
+    transform: rotate(12deg) translate3d(5%, -8%, 0);
+    opacity: 0.6;
+  }
+  to {
+    transform: rotate(24deg) translate3d(-8%, 6%, 0);
+    opacity: 1;
+  }
 }
-@media(max-width:600px) {
-  .campaign-intro { margin: 18px 16px 28px; min-height: 330px; border-radius: 18px; }
+@media (max-width: 600px) {
+  .campaign-intro {
+    margin: 18px 16px 28px;
+    min-height: 330px;
+    border-radius: 0;
+  }
 }
-@media(prefers-reduced-motion:reduce) {
-  .campaign-intro::before,.campaign-intro::after { animation: none; will-change: auto; }
+@media (prefers-reduced-motion: reduce) {
+  body.storefront-page::before,
+  body.storefront-page::after {
+    animation: none;
+    will-change: auto;
+  }
+}
+
+body.storefront-page {
+  isolation: isolate;
 }
