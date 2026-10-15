@@ -5,6 +5,7 @@ const env = loadEnv("production", process.cwd(), "VITE_");
 const result = await build({
   entryPoints: ["app.js"],
   bundle: true,
+  jsx: "automatic",
   format: "iife",
   minify: true,
   write: false,

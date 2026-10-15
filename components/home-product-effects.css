@@ -1,0 +1,31 @@
+/* Product-specific presentation. The registry component itself is unchanged. */
+.home-products .product-image {
+  overflow: visible;
+}
+.home-products .crownetic-reflective-product {
+  position: absolute;
+  inset: 0;
+}
+.crownetic-reflective-product .reflective-card__body {
+  box-shadow: none;
+}
+.crownetic-reflective-product .reflective-card__content {
+  padding: 0;
+}
+.crownetic-reflective-product .reflective-product-photo {
+  height: 100%;
+}
+.crownetic-reflective-product .reflective-card__canvas {
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.48;
+  mix-blend-mode: soft-light;
+}
+.crownetic-reflective-product .reflective-card__rim {
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .crownetic-reflective-product .reflective-card__body {
+    will-change: auto;
+  }
+}

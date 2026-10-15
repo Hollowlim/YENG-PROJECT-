@@ -1,3 +1,7 @@
+import {
+  clearProductEffects,
+  mountProductEffects,
+} from "./components/home-product-effects.js";
 import "@fontsource/barlow-condensed/600.css";
 import "@fontsource/barlow-condensed/700.css";
 import "@fontsource/barlow-condensed/800.css";
@@ -119,6 +123,7 @@ function notFound() {
   return `<section class="page empty"><h1 class="page-heading">THIS WAY BACK.</h1><p>We couldn't find that page or product.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section>`;
 }
 async function render({ scroll = true } = {}) {
+  clearProductEffects();
   app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
   try {
     products = await catalog.list();
@@ -141,6 +146,7 @@ async function render({ scroll = true } = {}) {
     else if (path === "/admin") content = await adminPage();
     else content = notFound();
     app.innerHTML = shell(content);
+    if (path === "/") mountProductEffects();
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {

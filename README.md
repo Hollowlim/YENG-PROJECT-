@@ -78,3 +78,9 @@ npm run test:browser
 Browser tests use `/usr/bin/chromium` when present. Else run `npx playwright install chromium` and set `CHROMIUM_PATH` to the installed Chrome executable, or adjust the launch settings in `playwright.config.js`. Browser tests cover admin publishing, draft visibility, bag persistence, simulated checkout, corrupt storage recovery and a 390px layout. They do not validate a live Supabase project.
 
 `npm run preview` serves the production build. The bundled sample uses hash routes and needs no server rewrite rules. This repository has not been deployed.
+
+## Homepage reflective products
+
+Homepage product images use React Bits' exact JS-CSS `ReflectiveCard` component, with white tint, metalness 1, roughness 0.3, blur 6, shine 1 and glare 0.5. The existing product content is passed through `children`; the example personal ID is not shown. Webcam access is disabled. `public/videos/reflection.mp4` is a generated abstract light-sweep clip that supplies the reflection and can be replaced with your own video. Hover a homepage item to see the tilt and glare; reduced-motion preferences disable tilt. Shop, product and admin pages keep their original layout.
+
+The upstream JSX/CSS and license are in `components/ReflectiveCard`; the integration and presentation overrides are in `components/home-product-effects.js` and `.css`. React is bundled into the sample HTML, so opening the sample still requires no npm installation. Rebuild after source changes. See the component README for source provenance and dependency versions.

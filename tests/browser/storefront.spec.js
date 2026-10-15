@@ -186,3 +186,74 @@ test("sample admin sign-out closes access on refresh", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByLabel("Product name", { exact: true })).toHaveCount(0);
 });
+
+test("homepage product cards reflect pointer movement and retain shopping links", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const cards = page.locator(".home-products .reflective-card");
+  await expect(cards).toHaveCount(3);
+  await expect(cards.first().locator("canvas")).toBeVisible();
+  await expect(cards.first().locator("img")).toBeVisible();
+  await cards.first().scrollIntoViewIfNeeded();
+  const box = await cards.first().boundingBox();
+  await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.2);
+  await expect
+    .poll(() =>
+      cards
+        .first()
+        .evaluate((el) =>
+          Math.abs(parseFloat(el.style.getPropertyValue("--rc-rotate-y"))),
+        ),
+    )
+    .toBeGreaterThan(0.2);
+  expect(
+    await cards
+      .first()
+      .locator("video")
+      .last()
+      .evaluate((el) => el.srcObject),
+  ).toBeNull();
+  await page.screenshot({
+    path: "test-results/reflective-home.png",
+    fullPage: true,
+  });
+  await cards.first().click();
+  await expect(
+    page.getByRole("heading", { name: "Core Heavyweight Tee", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
+  await expect(page.locator(".reflective-card")).toHaveCount(0);
+});
+
+test("reflective products respect reduced motion without requesting camera access", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    window.cameraRequests = 0;
+    if (navigator.mediaDevices)
+      navigator.mediaDevices.getUserMedia = () => {
+        window.cameraRequests++;
+        return Promise.reject(new Error("Unexpected camera request"));
+      };
+  });
+  await page.goto("/");
+  const card = page.locator(".home-products .reflective-card").first();
+  await expect(card).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  await card.hover({ position: { x: 30, y: 30 } });
+  await expect
+    .poll(() =>
+      card.evaluate((el) =>
+        parseFloat(el.style.getPropertyValue("--rc-rotate-y")),
+      ),
+    )
+    .toBe(0);
+  expect(await page.evaluate(() => window.cameraRequests)).toBe(0);
+  const video = card.locator("video").first();
+  await expect(video).toHaveAttribute("src", "./public/videos/reflection.mp4");
+  await expect
+    .poll(() => video.evaluate((el) => el.readyState))
+    .toBeGreaterThanOrEqual(2);
+});
