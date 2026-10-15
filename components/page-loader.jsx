@@ -59,7 +59,7 @@ export function showPageLoader() {
     host,
     root,
     started: performance.now(),
-    minimum: reduced ? 100 : 650,
+    minimum: reduced ? 100 : id === 1 ? 1500 : 1000,
   };
 }
 export async function hidePageLoader(loader) {
