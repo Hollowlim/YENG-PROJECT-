@@ -445,3 +445,95 @@ test("page navigation shows metallic monogram and product angle button row is re
   await page.getByRole("button", { name: "Next angle" }).click();
   await expect(page.locator(".viewer-index")).toHaveText("RIGHT VIEW");
 });
+
+test("customer signup profile per-item demo points and account isolation", async ({
+  page,
+}) => {
+  await page.goto("/#/signup");
+  await page.getByLabel("Full name", { exact: true }).fill("Sample Member");
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("member@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
+  await page
+    .getByRole("button", { name: "CREATE ACCOUNT", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "YOUR INNER CIRCLE." }),
+  ).toBeVisible();
+  await expect(page.locator(".points-number")).toHaveText("0");
+  await page
+    .getByRole("link", { name: "Profile settings", exact: true })
+    .click();
+  await page.getByLabel("Full name", { exact: true }).fill("Updated Member");
+  await page.getByRole("button", { name: "SAVE PROFILE", exact: true }).click();
+  await expect(page.getByText("Profile saved.", { exact: true })).toBeVisible();
+  await page.goto("/#/product/core-heavyweight-tee");
+  await page.getByRole("button", { name: "M", exact: true }).click();
+  await page.getByLabel("QUANTITY", { exact: true }).fill("10");
+  await page.getByRole("button", { name: "ADD TO BAG" }).click();
+  await page.getByRole("link", { name: "BAG (10)" }).click();
+  await page.getByRole("button", { name: "SAMPLE CHECKOUT" }).click();
+  await page.getByRole("button", { name: "COMPLETE SAMPLE ORDER" }).click();
+  await page
+    .getByRole("link", { name: "View your dashboard", exact: true })
+    .click();
+  await expect(page.locator(".points-number")).toHaveText("1,000");
+  await expect(page.locator(".tier-badge")).toHaveText("Bronze");
+  await expect(
+    page.getByText("Updated Member.", { exact: false }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/customer-dashboard.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("member@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("WrongPassword");
+  await page.getByRole("button", { name: "LOG IN", exact: true }).click();
+  await expect(page.locator(".customer-error")).toContainText("incorrect");
+  await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
+  await page.getByRole("button", { name: "LOG IN", exact: true }).click();
+  await expect(page.locator(".points-number")).toHaveText("1,000");
+  await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
+  await page.goto("/#/signup");
+  await page.getByLabel("Full name", { exact: true }).fill("Another Member");
+  await page
+    .getByLabel("Email address", { exact: true })
+    .fill("another@example.com");
+  await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
+  await page
+    .getByRole("button", { name: "CREATE ACCOUNT", exact: true })
+    .click();
+  await expect(page.locator(".points-number")).toHaveText("0");
+});
+test("customer language changes persist and account layout fits mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/#/signup");
+  await page.getByLabel("Language", { exact: true }).selectOption("ms");
+  await expect(
+    page.getByRole("heading", { name: "SERTAI KOMUNITI KAMI." }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "SERTAI KOMUNITI KAMI." }),
+  ).toBeVisible();
+  await page.getByLabel("Language", { exact: true }).selectOption("zh");
+  await expect(
+    page.getByRole("heading", { name: "加入品牌圈。" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByLabel("Language", { exact: true }).selectOption("ta");
+  await expect(
+    page.getByRole("heading", { name: "எங்கள் வட்டத்தில் இணையுங்கள்." }),
+  ).toBeVisible();
+  await page.getByLabel("Language", { exact: true }).selectOption("en");
+});

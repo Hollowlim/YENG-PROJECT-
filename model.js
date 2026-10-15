@@ -31,6 +31,13 @@ export function safeImage(url) {
 }
 export function validateProduct(p) {
   if (
+    p.reward_points !== undefined &&
+    (!Number.isSafeInteger(p.reward_points) ||
+      p.reward_points < 0 ||
+      p.reward_points > 100000)
+  )
+    throw Error("Reward points must be a whole number from 0 to 100,000.");
+  if (
     !p.name?.trim() ||
     !p.description?.trim() ||
     !["Tees", "Bottoms", "Accessories"].includes(p.category)

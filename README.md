@@ -116,3 +116,13 @@ Page navigation displays the supplied CRWN-style monogram with React Bits Metall
 The Left / Front / Right text-button row has been removed. Product angles still work with the previous/next arrows, keyboard arrows and swipes. The current-angle label remains available for orientation and screen readers.
 
 The loading monogram now uses liquid chrome MetallicPaint instead of electricity. The first load lasts at least 1.5 seconds, and page changes at least 1 second; reduced-motion users get a short static monogram. `components/prepare-monogram.js` keys the existing white backdrop into an in-memory alpha mask for MetallicPaint without altering the source logo. No new dependencies were needed.
+
+## Customer accounts, rewards and languages
+
+The header account icon opens customer login/sign-up, a membership dashboard and profile settings. Customer accounts are separate from the sample admin login. In local demo mode, use fictional details: accounts and points are stored only in this browser, passwords are salted and hashed with PBKDF2, and signing out clears the customer session. This demo storage is not production access control. Connecting Supabase switches customer authentication to Supabase Auth and profiles/history to owner-restricted tables.
+
+Each product earns **100 points per item by default**, configurable in the admin product editor. Points depend on quantity, not money spent. Tiers are Member below 1,000 points; Bronze at 1,000; Gold at 5,000; Platinum at 10,000. Tiers recognize accumulated points; no redemption, discounts or unstated benefits are implemented. Signed-in demo customers earn clearly labeled demo points after sample checkout. Guests earn no points, and no real points are awarded by the connected sample checkout.
+
+For Supabase, run `003_customer_rewards.sql` after migrations 001 and 002. Customers can update only their own profile and read only their own rewards. Browser roles cannot write reward events or call the award RPC. A trusted server must verify a real paid order before invoking `award_purchase_points`; order references are unique to prevent duplicate awards. Payment/webhook integration and live Supabase verification remain outstanding. No service-role key belongs in the frontend.
+
+The language selector offers **English, Bahasa Melayu, Chinese and Tamil**, remembers the choice and translates customer account screens and key storefront navigation, controls and checkout labels. Brand copy and product content entered by admin remain in their original language; arbitrary automatic translation is not provided. Language changes preserve form inputs. Admin remains primarily English.

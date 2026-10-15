@@ -1,3 +1,6 @@
+import { customers } from "./customer/service.js";
+import { authPage, dashboard, settingsPage } from "./customer/pages.js";
+import { languageSelect, translateRoot, setLanguage } from "./customer/i18n.js";
 import { showPageLoader, hidePageLoader } from "./components/page-loader.jsx";
 import {
   productViewer,
@@ -49,7 +52,7 @@ const arrow =
 const bagIcon =
   '<svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" aria-hidden="true"><path d="M4 6h12l1 12H3L4 6Z"/><path d="M7 7V5a3 3 0 0 1 6 0v2"/></svg>';
 const link = (path, text, cls = "") =>
-  `<a class="${cls}" href="#${path}" data-link>${text}</a>`;
+  `<a class="${cls}" href="#${path}" data-link ${cls === "profile-link" ? 'aria-label="My account"' : ""}>${text}</a>`;
 function toast(message) {
   const t = document.querySelector("#toast");
   t.textContent = message;
@@ -64,7 +67,7 @@ function persistBag() {
   );
 }
 function shell(content) {
-  return `<div class="announcement">INDEPENDENT STREETWEAR <span>·</span> KUALA LUMPUR, MALAYSIA</div><header class="masthead">${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724">', "wordmark brand-logo")}<nav class="nav" aria-label="Main navigation"><div class="nav-left">${link("/shop", "SHOP ALL")}${link("/shop?collection=new", "NEW DROP")}${link("/about", "OUR STORY")}</div><span class="location">3.1390° N &nbsp; 101.6869° E</span><div class="nav-right">${link("/bag", `${bagIcon} BAG (${bag.reduce((n, l) => n + l.quantity, 0)})`, "bag-link")}</div></nav></header><main id="main">${content}</main><footer class="footer"><div class="footer-top"><div>${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724" loading="lazy">', "footer-logo brand-logo")}<p>Same city. Different perspective.</p></div><div class="footer-links">${link("/shop", "Shop the collection")}${link("/about", "Our story")}<a href="https://www.instagram.com/crownnetic.official/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>${link("/admin", "Studio / Admin")}</div></div><div class="footer-bottom"><span>Copyright © ${new Date().getFullYear()} CROWNETIC. All rights reserved.</span><span>${connected ? "SUPABASE CONNECTED" : "INTERACTIVE DEMO"} &nbsp; · &nbsp; MYR RM &nbsp; · &nbsp; SAMPLE IMAGERY</span></div></footer>`;
+  return `<div class="announcement">INDEPENDENT STREETWEAR <span>·</span> KUALA LUMPUR, MALAYSIA</div><header class="masthead">${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724">', "wordmark brand-logo")}<nav class="nav" aria-label="Main navigation"><div class="nav-left">${link("/shop", "SHOP ALL")}${link("/shop?collection=new", "NEW DROP")}${link("/about", "OUR STORY")}</div><span class="location">3.1390° N &nbsp; 101.6869° E</span><div class="nav-right">${languageSelect()}${link("/account", '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg><span class="profile-label">ACCOUNT</span>', "profile-link")} ${link("/bag", `${bagIcon} <span>BAG</span> (${bag.reduce((n, l) => n + l.quantity, 0)})`, "bag-link")}</div></nav></header><main id="main">${content}</main><footer class="footer"><div class="footer-top"><div>${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724" loading="lazy">', "footer-logo brand-logo")}<p>Same city. Different perspective.</p></div><div class="footer-links">${link("/shop", "Shop the collection")}${link("/about", "Our story")}<a href="https://www.instagram.com/crownnetic.official/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>${link("/admin", "Studio / Admin")}</div></div><div class="footer-bottom"><span>Copyright © ${new Date().getFullYear()} CROWNETIC. All rights reserved.</span><span>${connected ? "SUPABASE CONNECTED" : "INTERACTIVE DEMO"} &nbsp; · &nbsp; MYR RM &nbsp; · &nbsp; SAMPLE IMAGERY</span></div></footer>`;
 }
 function card(p, i = 0) {
   return `<article class="product-card">${link(`/product/${encodeURIComponent(p.id)}`, `<div class="product-image"><img src="${e(p.image_url)}" alt="${e(p.name)} — illustrative product photograph" loading="lazy">${i === 0 ? '<span class="product-badge">COLLECTION 001</span>' : ""}<span class="product-open" aria-hidden="true">${arrow}</span></div><div class="product-meta"><span>${e(p.name)}</span><span>${money(p.price_sen)}</span></div><p class="product-caption">${e(p.tag || "THE CROWNETIC COLLECTION")}</p>`)}</article>`;
@@ -80,7 +83,7 @@ function shop() {
 function productPage(id) {
   const p = products.find((p) => p.id === id);
   if (!p) return notFound();
-  return `<section class="page"><span class="small-label">${link("/shop", "COLLECTION 001")} / ${e(p.category)}</span><div class="detail">${productViewer(p)}<div class="detail-copy"><span class="small-label">${e(p.tag || "CROWNETIC / 001")}</span><h1>${e(p.name)}</h1><p class="price">${money(p.price_sen)}</p><p class="description">${e(p.description)}</p><form id="add-form" data-product="${e(p.id)}"><label>SELECT YOUR SIZE</label><div class="size-row" role="group" aria-label="Available sizes">${p.variants.map((v) => `<button class="size" type="button" data-size="${e(v.size)}" ${v.stock < 1 ? "disabled" : ""} aria-pressed="false">${e(v.size)}${v.stock < 1 ? " — sold out" : ""}</button>`).join("")}</div><input type="hidden" name="size"><label for="quantity">QUANTITY</label><input id="quantity" name="quantity" type="number" min="1" max="99" value="1" style="width:90px"><p id="product-error" class="error" role="alert"></p><button class="button" type="submit">ADD TO BAG ${arrow}</button></form><div class="detail-note">COLLECTION 001 &nbsp; / &nbsp; ILLUSTRATIVE SAMPLE PRODUCT<br>MYR pricing. Shipping and payments are simulated in this sample.</div></div></div></section>`;
+  return `<section class="page"><span class="small-label">${link("/shop", "COLLECTION 001")} / ${e(p.category)}</span><div class="detail">${productViewer(p)}<div class="detail-copy"><span class="small-label">${e(p.tag || "CROWNETIC / 001")}</span><h1>${e(p.name)}</h1><p class="price">${money(p.price_sen)}</p><p class="description">${e(p.description)}</p><form id="add-form" data-product="${e(p.id)}"><label>SELECT YOUR SIZE</label><div class="size-row" role="group" aria-label="Available sizes">${p.variants.map((v) => `<button class="size" type="button" data-size="${e(v.size)}" ${v.stock < 1 ? "disabled" : ""} aria-pressed="false">${e(v.size)}${v.stock < 1 ? " — sold out" : ""}</button>`).join("")}</div><input type="hidden" name="size"><label for="quantity">QUANTITY</label><input id="quantity" name="quantity" type="number" min="1" max="99" value="1" style="width:90px"><p id="product-error" class="error" role="alert"></p><button class="button" type="submit">ADD TO BAG ${arrow}</button></form><p class="reward-product-note"><strong>${p.reward_points ?? 100}</strong> <span>points per item</span> · ${link("/account", "View your dashboard")}</p><div class="detail-note">COLLECTION 001 &nbsp; / &nbsp; ILLUSTRATIVE SAMPLE PRODUCT<br>MYR pricing. Shipping and payments are simulated in this sample.</div></div></div></section>`;
 }
 function bagPage() {
   if (!bag.length)
@@ -127,11 +130,12 @@ async function adminPage() {
   return `<section class="page"><div class="section-top"><div><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading" style="margin-bottom:0">THE PRODUCT ROOM.</h1></div>${connected ? '<button class="small-button" data-signout>SIGN OUT</button>' : '<div><button class="small-button" data-reset>RESET DEMO</button> <button class="small-button" data-signout>SIGN OUT</button></div>'}</div><div class="notice">${connected ? "Supabase catalogue. Only authorized administrators can publish products." : "SAMPLE ADMIN — Signed in as admin@123. Changes are saved in this browser only. Publish a product here to see it in the shop."}</div><div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div></section>`;
 }
 function editor(p) {
-  return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><div class="form-grid">${["left", "right"].map((side) => `<div class="field"><label for="view-${side}">${side} angle image URL (optional)</label><input id="view-${side}" name="view-${side}" value="${e(p?.[`view_${side}`] || "")}"><label for="file-${side}" style="margin-top:10px">Upload ${side} angle</label><input id="file-${side}" type="file" accept="image/jpeg,image/png,image/webp"></div>`).join("")}</div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
+  return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><div class="form-grid">${["left", "right"].map((side) => `<div class="field"><label for="view-${side}">${side} angle image URL (optional)</label><input id="view-${side}" name="view-${side}" value="${e(p?.[`view_${side}`] || "")}"><label for="file-${side}" style="margin-top:10px">Upload ${side} angle</label><input id="file-${side}" type="file" accept="image/jpeg,image/png,image/webp"></div>`).join("")}</div><div class="field"><label for="reward-points">Reward points per item</label><input id="reward-points" name="reward_points" type="number" min="0" max="100000" step="1" value="${p?.reward_points ?? 100}" required></div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
 }
 function notFound() {
   return `<section class="page empty"><h1 class="page-heading">THIS WAY BACK.</h1><p>We couldn't find that page or product.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section>`;
 }
+let customerUser = null;
 let renderVersion = 0;
 async function render({ scroll = true } = {}) {
   const version = ++renderVersion;
@@ -159,7 +163,19 @@ async function render({ scroll = true } = {}) {
     else if (path === "/bag") content = bagPage();
     else if (path === "/checkout") content = checkoutPage();
     else if (path === "/about") content = about();
-    else if (path === "/admin") content = await adminPage();
+    else if (["/account", "/settings", "/login", "/signup"].includes(path)) {
+      customerUser = await customers.current();
+      if (path === "/signup" || path === "/login")
+        content = customerUser
+          ? dashboard(customerUser, await customers.activity())
+          : authPage(path === "/signup");
+      else
+        content = customerUser
+          ? path === "/settings"
+            ? settingsPage(customerUser)
+            : dashboard(customerUser, await customers.activity())
+          : authPage();
+    } else if (path === "/admin") content = await adminPage();
     else content = notFound();
     if (version !== renderVersion) return;
     app.innerHTML = shell(content);
@@ -168,6 +184,7 @@ async function render({ scroll = true } = {}) {
     }
     mountProductEffects();
     if (path.startsWith("/product/")) mountProductViewer();
+    translateRoot(app);
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {
@@ -250,6 +267,11 @@ document.addEventListener("click", async (event) => {
       render({ scroll: false });
       toast("Demo catalogue reset.");
     }
+    if (target.hasAttribute("data-customer-logout")) {
+      await customers.logout();
+      customerUser = null;
+      navigate("/login");
+    }
     if (target.hasAttribute("data-signout")) {
       if (connected) {
         const db = await supabase();
@@ -315,6 +337,7 @@ document.addEventListener("submit", async (event) => {
           price_sen: priceSen(data.get("price")),
           description: data.get("description").trim(),
           image_url,
+          reward_points: Number(data.get("reward_points")),
           ...angleViews,
           view_sprite,
           published: data.has("published"),
@@ -339,6 +362,7 @@ document.addEventListener("submit", async (event) => {
   }
   if (form.id === "checkout-form") {
     const button = form.querySelector("button");
+    if (button.disabled) return;
     button.disabled = true;
     try {
       const fresh = await catalog.list();
@@ -351,16 +375,68 @@ document.addEventListener("submit", async (event) => {
           "Prices changed. Review your updated total before trying again.",
         );
       }
+      form.dataset.purchaseRef ||= `DEMO-${crypto.randomUUID()}`;
+      const earned = await customers.awardDemo(
+        bag,
+        fresh,
+        form.dataset.purchaseRef,
+      );
       bag = [];
       persistBag();
       app.innerHTML = shell(
-        `<section class="page success"><div class="success-symbol">✓</div><span class="small-label">SIMULATION COMPLETE</span><h1>GOOD TASTE.<br>GREAT CHOICE.</h1><p>Your sample checkout is complete.<br>No payment was taken and no real order was placed.</p>${link("/shop", "BACK TO THE COLLECTION " + arrow, "button")}</section>`,
+        `<section class="page success"><div class="success-symbol">✓</div><span class="small-label">SIMULATION COMPLETE</span><h1>GOOD TASTE.<br>GREAT CHOICE.</h1><p>Your sample checkout is complete.<br>No payment was taken and no real order was placed.</p>${earned ? `<p><strong>+${earned}</strong> <span>demo points added to your account.</span></p>${link("/account", "View your dashboard", "text-link")}` : connected ? "<p>Sample checkout does not award real points.</p>" : `<p>${link("/account", "Sign in to earn points on your next purchase.", "text-link")}</p>`}${link("/shop", "BACK TO THE COLLECTION " + arrow, "button")}</section>`,
       );
+      translateRoot(app);
       window.scrollTo(0, 0);
     } catch (error) {
       const el = document.querySelector("#checkout-error");
       if (el) el.textContent = error.message;
       else toast(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+  if (form.id === "customer-auth" || form.id === "customer-settings") {
+    const button = form.querySelector("[type=submit]");
+    if (button.disabled) return;
+    button.disabled = true;
+    const error = form.querySelector(".customer-error");
+    error.textContent = "";
+    try {
+      const data = new FormData(form);
+      if (form.id === "customer-settings") {
+        await customers.update({
+          name: String(data.get("name")),
+          phone: String(data.get("phone")),
+          address: String(data.get("address")),
+        });
+        form.querySelector(".customer-saved").textContent = "Profile saved.";
+        translateRoot(app);
+      } else if (form.dataset.mode === "signup") {
+        const result = await customers.signup({
+          name: String(data.get("name")),
+          email: String(data.get("email")),
+          password: String(data.get("password")),
+        });
+        if (result.confirmation) {
+          app.innerHTML = shell(
+            authPage(
+              false,
+              "Check your email to confirm your account, then log in.",
+            ),
+          );
+          translateRoot(app);
+        } else navigate("/account");
+      } else {
+        await customers.login(
+          String(data.get("email")),
+          String(data.get("password")),
+        );
+        navigate("/account");
+      }
+    } catch (err) {
+      error.textContent = err.message;
+      translateRoot(app);
     } finally {
       button.disabled = false;
     }
@@ -395,3 +471,7 @@ document.addEventListener("submit", async (event) => {
   }
 });
 render();
+
+document.addEventListener("change", (event) => {
+  if (event.target.id === "customer-language") setLanguage(event.target.value);
+});
