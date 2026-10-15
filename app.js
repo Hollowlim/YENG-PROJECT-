@@ -67,7 +67,7 @@ function persistBag() {
   );
 }
 function shell(content) {
-  return `<div class="announcement">INDEPENDENT STREETWEAR <span>·</span> KUALA LUMPUR, MALAYSIA</div><header class="masthead">${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724">', "wordmark brand-logo")}<nav class="nav" aria-label="Main navigation"><div class="nav-left">${link("/shop", "SHOP ALL")}${link("/shop?collection=new", "NEW DROP")}${link("/about", "OUR STORY")}</div><span class="location">3.1390° N &nbsp; 101.6869° E</span><div class="nav-right">${languageSelect()}${link("/account", '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg><span class="profile-label">ACCOUNT</span>', "profile-link")} ${link("/bag", `${bagIcon} <span>BAG</span> (${bag.reduce((n, l) => n + l.quantity, 0)})`, "bag-link")}</div></nav></header><main id="main">${content}</main><footer class="footer"><div class="footer-top"><div>${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724" loading="lazy">', "footer-logo brand-logo")}<p>Same city. Different perspective.</p></div><div class="footer-links">${link("/shop", "Shop the collection")}${link("/about", "Our story")}<a href="https://www.instagram.com/crownnetic.official/" target="_blank" rel="noopener noreferrer">Instagram ↗</a>${link("/admin", "Studio / Admin")}</div></div><div class="footer-bottom"><span>Copyright © ${new Date().getFullYear()} CROWNETIC. All rights reserved.</span><span>${connected ? "SUPABASE CONNECTED" : "INTERACTIVE DEMO"} &nbsp; · &nbsp; MYR RM &nbsp; · &nbsp; SAMPLE IMAGERY</span></div></footer>`;
+  return `<div class="announcement">INDEPENDENT STREETWEAR <span>·</span> KUALA LUMPUR, MALAYSIA</div><header class="masthead">${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724">', "wordmark brand-logo")}<nav class="nav" aria-label="Main navigation"><div class="nav-left">${link("/shop", "SHOP ALL")}${link("/shop?collection=new", "NEW DROP")}${link("/about", "OUR STORY")}</div><span class="location">3.1390° N &nbsp; 101.6869° E</span><div class="nav-right">${languageSelect()}${link("/account", '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg><span class="profile-label">ACCOUNT</span>', "profile-link")} ${link("/bag", `${bagIcon} <span>BAG</span> (${bag.reduce((n, l) => n + l.quantity, 0)})`, "bag-link")}</div></nav></header><main id="main">${content}</main><footer class="footer"><div class="footer-top"><div>${link("/", '<img src="/assets/logo-black.png" alt="CROWNETIC" width="2172" height="724" loading="lazy">', "footer-logo brand-logo")}<p>Same city. Different perspective.</p></div><div class="footer-links">${link("/shop", "Shop the collection")}${link("/about", "Our story")}<a href="https://www.instagram.com/crownnetic.official/" target="_blank" rel="noopener noreferrer">Instagram ↗</a></div></div><div class="footer-bottom"><span>Copyright © ${new Date().getFullYear()} CROWNETIC. All rights reserved.</span><span>${connected ? "SUPABASE CONNECTED" : "INTERACTIVE DEMO"} &nbsp; · &nbsp; MYR RM &nbsp; · &nbsp; SAMPLE IMAGERY</span></div></footer>`;
 }
 function card(p, i = 0) {
   return `<article class="product-card">${link(`/product/${encodeURIComponent(p.id)}`, `<div class="product-image"><img src="${e(p.image_url)}" alt="${e(p.name)} — illustrative product photograph" loading="lazy">${i === 0 ? '<span class="product-badge">COLLECTION 001</span>' : ""}<span class="product-open" aria-hidden="true">${arrow}</span></div><div class="product-meta"><span>${e(p.name)}</span><span>${money(p.price_sen)}</span></div><p class="product-caption">${e(p.tag || "THE CROWNETIC COLLECTION")}</p>`)}</article>`;
@@ -428,11 +428,29 @@ document.addEventListener("submit", async (event) => {
           translateRoot(app);
         } else navigate("/account");
       } else {
-        await customers.login(
-          String(data.get("email")),
-          String(data.get("password")),
-        );
-        navigate("/account");
+        const email = String(data.get("email")).trim();
+        const password = String(data.get("password"));
+        if (!connected && email === "admin@123") {
+          if (password !== "admin@123")
+            throw Error("Incorrect username or password.");
+          demoAdmin = true;
+          sessionStorage.setItem("crownetic.demo.admin", "yes");
+          navigate("/admin");
+        } else {
+          await customers.login(email, password);
+          let isAdmin = false;
+          if (connected) {
+            const db = await supabase();
+            const { data: membership, error: roleError } = await db
+              .from("admin_users")
+              .select("user_id")
+              .eq("user_id", (await db.auth.getUser()).data.user.id)
+              .maybeSingle();
+            if (roleError) throw roleError;
+            isAdmin = Boolean(membership);
+          }
+          navigate(isAdmin ? "/admin" : "/account");
+        }
       }
     } catch (err) {
       error.textContent = err.message;

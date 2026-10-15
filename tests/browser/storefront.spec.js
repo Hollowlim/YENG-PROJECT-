@@ -142,16 +142,17 @@ test("standalone HTML has styled storefront and functional admin login", async (
       .locator("body")
       .evaluate((el) => getComputedStyle(el).backgroundColor),
   ).not.toBe("rgba(0, 0, 0, 0)");
-  await page.getByRole("link", { name: "Studio / Admin" }).click();
+  await expect(page.getByRole("link", { name: "Studio / Admin" })).toHaveCount(0);
+  await page.getByRole("link", { name: "My account", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "ADMIN SIGN IN." }),
+    page.getByRole("heading", { name: "WELCOME BACK." }),
   ).toBeVisible();
-  await page.getByLabel("Username", { exact: true }).fill("admin@123");
-  await page.getByLabel("Password", { exact: true }).fill("wrong");
-  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
-  await expect(page.locator("#login-error")).toContainText("Incorrect");
+  await page.getByLabel("Email address or username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("wrongpass");
+  await page.getByRole("button", { name: "LOG IN" }).click();
+  await expect(page.locator(".customer-error")).toContainText("Incorrect");
   await page.getByLabel("Password", { exact: true }).fill("admin@123");
-  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
+  await page.getByRole("button", { name: "LOG IN" }).click();
   await expect(
     page.getByRole("heading", { name: "THE PRODUCT ROOM." }),
   ).toBeVisible();
@@ -452,7 +453,7 @@ test("customer signup profile per-item demo points and account isolation", async
   await page.goto("/#/signup");
   await page.getByLabel("Full name", { exact: true }).fill("Sample Member");
   await page
-    .getByLabel("Email address", { exact: true })
+    .getByLabel(/^Email address/ )
     .fill("member@example.com");
   await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
   await page
@@ -489,7 +490,7 @@ test("customer signup profile per-item demo points and account isolation", async
   });
   await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
   await page
-    .getByLabel("Email address", { exact: true })
+    .getByLabel(/^Email address/ )
     .fill("member@example.com");
   await page.getByLabel("Password", { exact: true }).fill("WrongPassword");
   await page.getByRole("button", { name: "LOG IN", exact: true }).click();
@@ -501,7 +502,7 @@ test("customer signup profile per-item demo points and account isolation", async
   await page.goto("/#/signup");
   await page.getByLabel("Full name", { exact: true }).fill("Another Member");
   await page
-    .getByLabel("Email address", { exact: true })
+    .getByLabel(/^Email address/ )
     .fill("another@example.com");
   await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
   await page
