@@ -1031,3 +1031,39 @@ textarea {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* Uploaded brand wordmark, prepared in black on transparency. */
+.brand-logo {
+  position: relative;
+  display: block;
+  aspect-ratio: 1875 / 275;
+  overflow: hidden;
+}
+.brand-logo img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 115.84%;
+  max-width: none;
+  height: auto;
+  transform: translate(-7.827%, -32.873%);
+}
+.wordmark.brand-logo {
+  width: min(90%, 1050px);
+  margin: 32px auto;
+  transform: none;
+  line-height: 1;
+}
+.footer-logo.brand-logo {
+  width: 190px;
+}
+@media (max-width: 600px) {
+  .wordmark.brand-logo {
+    width: 100%;
+    margin: 22px auto;
+  }
+  .footer-links {
+    flex-wrap: wrap;
+    gap: 16px 22px;
+  }
+}
