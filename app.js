@@ -1,4 +1,8 @@
 import {
+  mountScrollEffect,
+  clearScrollEffect,
+} from "./components/home-scroll-effect.jsx";
+import {
   clearProductEffects,
   mountProductEffects,
 } from "./components/home-product-effects.js";
@@ -60,7 +64,7 @@ function card(p, i = 0) {
   return `<article class="product-card">${link(`/product/${encodeURIComponent(p.id)}`, `<div class="product-image"><img src="${e(p.image_url)}" alt="${e(p.name)} — illustrative product photograph" loading="lazy">${i === 0 ? '<span class="product-badge">COLLECTION 001</span>' : ""}<span class="product-open" aria-hidden="true">${arrow}</span></div><div class="product-meta"><span>${e(p.name)}</span><span>${money(p.price_sen)}</span></div><p class="product-caption">${e(p.tag || "THE CROWNETIC COLLECTION")}</p>`)}</article>`;
 }
 function home() {
-  return `<section class="hero"><div class="hero-photo"><img src="/assets/campaign.png" alt="Streetwear campaign: model in washed charcoal clothing seated against concrete architecture" fetchpriority="high"><span class="photo-index">CROWNETIC — VOL. 001</span><span class="photo-label">THE CONCRETE ARCHIVE / LOOK 01</span></div><div class="hero-copy"><p class="eyebrow">COLLECTION 001 — THE FIRST CHAPTER</p><h1>BUILT TO<br>STAND APART.</h1><div class="mini-rule"></div><p class="hero-text">Heavyweight essentials.<br>Made for your everyday rotation.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}<p class="hero-foot">DESIGNED WITH INTENTION. WORN YOUR WAY.</p></div></section><div class="ticker"><span>INDEPENDENT BY NATURE</span><b>✳</b><span>NOT FOR EVERYONE. FOR YOU.</span><b>✳</b><span>KUALA LUMPUR TO EVERYWHERE</span></div><section class="section home-products"><div class="section-top"><div><span class="small-label">THE NEW ROTATION / 001</span><h2>THE EVERYDAY UNIFORM.</h2></div>${link("/shop", "EXPLORE ALL " + arrow, "text-link")}</div><div class="product-grid">${products.slice(0, 3).map(card).join("")}</div></section><section class="brand-strip"><div><span class="small-label">OUR POINT OF VIEW</span><h2>QUIET CONFIDENCE.<br>LOUD PRESENCE.</h2></div><div><p>For the ones who find their own way. CROWNETIC is an independent streetwear label from Kuala Lumpur, built around a simple idea: wear what feels like you.</p>${link("/about", "THIS IS CROWNETIC " + arrow, "text-link")}</div></section>`;
+  return `<section id="scroll-campaign" aria-label="Collection 001 campaign"></section><section class="campaign-intro"><span class="small-label">THE CONCRETE ARCHIVE / VOL. 001</span><p>Heavyweight essentials.<br>Made for your everyday rotation.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section><div class="ticker"><span>INDEPENDENT BY NATURE</span><b>✳</b><span>NOT FOR EVERYONE. FOR YOU.</span><b>✳</b><span>KUALA LUMPUR TO EVERYWHERE</span></div><section class="section home-products"><div class="section-top"><div><span class="small-label">THE NEW ROTATION / 001</span><h2>THE EVERYDAY UNIFORM.</h2></div>${link("/shop", "EXPLORE ALL " + arrow, "text-link")}</div><div class="product-grid">${products.slice(0, 3).map(card).join("")}</div></section><section class="brand-strip"><div><span class="small-label">OUR POINT OF VIEW</span><h2>QUIET CONFIDENCE.<br>LOUD PRESENCE.</h2></div><div><p>For the ones who find their own way. CROWNETIC is an independent streetwear label from Kuala Lumpur, built around a simple idea: wear what feels like you.</p>${link("/about", "THIS IS CROWNETIC " + arrow, "text-link")}</div></section>`;
 }
 function shop() {
   const list =
@@ -124,6 +128,7 @@ function notFound() {
 }
 async function render({ scroll = true } = {}) {
   clearProductEffects();
+  clearScrollEffect();
   app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
   try {
     products = await catalog.list();
@@ -146,7 +151,10 @@ async function render({ scroll = true } = {}) {
     else if (path === "/admin") content = await adminPage();
     else content = notFound();
     app.innerHTML = shell(content);
-    if (path === "/") mountProductEffects();
+    if (path === "/") {
+      mountScrollEffect();
+      mountProductEffects();
+    }
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {

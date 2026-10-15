@@ -72,7 +72,7 @@ test("responsive homepage has working imagery and navigation", async ({
   await expect(
     page.getByRole("heading", { name: "BUILT TO STAND APART." }),
   ).toBeVisible();
-  await page.locator(".hero-photo img").evaluate((img) => img.decode());
+  await page.locator(".scroll-expand__media").evaluate((img) => img.decode());
   await page.screenshot({
     path: "test-results/home-desktop.png",
     fullPage: true,
@@ -256,4 +256,40 @@ test("reflective products respect reduced motion without requesting camera acces
   await expect
     .poll(() => video.evaluate((el) => el.readyState))
     .toBeGreaterThanOrEqual(2);
+});
+
+test("dark rounded homepage campaign expands on page scroll", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".scroll-expand")).toHaveCount(1);
+  const frame = page.locator(".scroll-expand__frame");
+  const before = await frame.evaluate((el) => getComputedStyle(el).clipPath);
+  const stage = await page.locator(".scroll-expand__track").boundingBox();
+  await page.evaluate(
+    (y) => window.scrollTo(0, y),
+    stage.y + (page.viewportSize()?.height || 720) * 1.25,
+  );
+  await expect
+    .poll(() => frame.evaluate((el) => getComputedStyle(el).clipPath))
+    .not.toBe(before);
+  await expect
+    .poll(() =>
+      page
+        .locator(".scroll-expand__overlay")
+        .evaluate((el) => Number(getComputedStyle(el).opacity)),
+    )
+    .toBeGreaterThan(0.9);
+  expect(
+    await page
+      .locator("body")
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe("rgb(11, 11, 11)");
+  await expect(
+    page.getByRole("link", { name: "EXPLORE THE DROP", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/dark-expanded-home.png",
+    fullPage: false,
+  });
 });

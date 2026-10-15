@@ -84,3 +84,9 @@ Browser tests use `/usr/bin/chromium` when present. Else run `npx playwright ins
 Homepage product images use React Bits' exact JS-CSS `ReflectiveCard` component, with white tint, metalness 1, roughness 0.3, blur 6, shine 1 and glare 0.5. The existing product content is passed through `children`; the example personal ID is not shown. Webcam access is disabled. `public/videos/reflection.mp4` is a generated abstract light-sweep clip that supplies the reflection and can be replaced with your own video. Hover a homepage item to see the tilt and glare; reduced-motion preferences disable tilt. Shop, product and admin pages keep their original layout.
 
 The upstream JSX/CSS and license are in `components/ReflectiveCard`; the integration and presentation overrides are in `components/home-product-effects.js` and `.css`. React is bundled into the sample HTML, so opening the sample still requires no npm installation. Rebuild after source changes. See the component README for source provenance and dependency versions.
+
+## Midnight theme and ScrollExpand campaign
+
+The sample now uses a black background, light wordmark, readable dark controls and gently rounded images, cards and buttons. The homepage campaign uses the complete JavaScript/CSS `ScrollExpand` source supplied in the user's pasted instructions, stored in `components/ScrollExpand`. Integration is in `components/home-scroll-effect.jsx`.
+
+The campaign follows page scrolling, expands from a rounded frame, fades the opening headline and reveals the collection action. Reduced motion renders an expanded static campaign and shortens the scroll section. Homepage product reflections continue below the campaign. No additional dependencies were needed beyond the installed React runtime.

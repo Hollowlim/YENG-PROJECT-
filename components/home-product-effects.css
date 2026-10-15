@@ -29,3 +29,8 @@
     will-change: auto;
   }
 }
+
+.crownetic-reflective-product .product-badge,
+.crownetic-reflective-product .product-open {
+  color: var(--ink);
+}

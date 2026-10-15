@@ -38,7 +38,7 @@ export function mountProductEffects() {
           theme: "light",
           width: "100%",
           height: "100%",
-          radius: 0,
+          radius: 14,
           intro: false,
           className: "crownetic-reflective-product",
         },
