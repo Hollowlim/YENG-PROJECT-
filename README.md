@@ -90,3 +90,7 @@ The upstream JSX/CSS and license are in `components/ReflectiveCard`; the integra
 The sample now uses a black background, light wordmark, readable dark controls and gently rounded images, cards and buttons. The homepage campaign uses the complete JavaScript/CSS `ScrollExpand` source supplied in the user's pasted instructions, stored in `components/ScrollExpand`. Integration is in `components/home-scroll-effect.jsx`.
 
 The campaign follows page scrolling, expands from a rounded frame, fades the opening headline and reveals the collection action. Reduced motion renders an expanded static campaign and shortens the scroll section. Homepage product reflections continue below the campaign. No additional dependencies were needed beyond the installed React runtime.
+
+## Original ambient light waves
+
+`components/ambient-waves.css` adds original animated silver/violet light waves behind the homepage collection text and button. This is a CSS alternative, **not React Bits Pro Chroma Waves**. The Pro registry remains unavailable until `REACTBITS_LICENSE_KEY` and network access are configured. No license key or Pro source is included in the website. The original background respects reduced-motion preferences.

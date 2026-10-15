@@ -1,3 +1,4 @@
+import "./components/ambient-waves.css";
 import {
   mountScrollEffect,
   clearScrollEffect,
