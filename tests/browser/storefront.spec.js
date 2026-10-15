@@ -538,3 +538,28 @@ test("customer language changes persist and account layout fits mobile", async (
   ).toBeVisible();
   await page.getByLabel("Language", { exact: true }).selectOption("en");
 });
+
+test("metallic header follows page navigation and keeps the home link accessible", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/index.html");
+  await expect(page.locator("#page-loader")).toBeHidden();
+  const logo = page.locator(".wordmark.brand-logo");
+  await expect(logo).toHaveAccessibleName("CROWNETIC");
+  await expect(logo.locator("canvas")).toBeVisible();
+  await page.waitForTimeout(1000);
+  await logo.screenshot({ path: "test-results/metallic-header.png" });
+  for (const route of ["/shop", "/account", "/bag", "/about", "/admin"]) {
+    await page.goto(`/index.html#${route}`);
+    await expect(page.locator("#page-loader")).toBeHidden();
+    await expect(logo.locator("canvas")).toBeVisible();
+    await expect(logo.locator("img")).toBeVisible();
+  }
+  await logo.click();
+  await expect(page.getByRole("heading", { name: "BUILT TO STAND APART." })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await expect(logo.locator("img")).toBeVisible();
+  await expect(logo.locator("canvas")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

@@ -1,0 +1,12 @@
+.header-logo-effect {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.wordmark.brand-logo:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-logo-effect { display: none; }
+}
