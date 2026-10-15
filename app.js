@@ -1,3 +1,7 @@
+import {
+  productViewer,
+  mountProductViewer,
+} from "./components/product-viewer.js";
 import "./components/ambient-waves.css";
 import {
   mountScrollEffect,
@@ -75,7 +79,7 @@ function shop() {
 function productPage(id) {
   const p = products.find((p) => p.id === id);
   if (!p) return notFound();
-  return `<section class="page"><span class="small-label">${link("/shop", "COLLECTION 001")} / ${e(p.category)}</span><div class="detail"><div class="detail-image"><img src="${e(p.image_url)}" alt="${e(p.name)} — illustrative product image"></div><div class="detail-copy"><span class="small-label">${e(p.tag || "CROWNETIC / 001")}</span><h1>${e(p.name)}</h1><p class="price">${money(p.price_sen)}</p><p class="description">${e(p.description)}</p><form id="add-form" data-product="${e(p.id)}"><label>SELECT YOUR SIZE</label><div class="size-row" role="group" aria-label="Available sizes">${p.variants.map((v) => `<button class="size" type="button" data-size="${e(v.size)}" ${v.stock < 1 ? "disabled" : ""} aria-pressed="false">${e(v.size)}${v.stock < 1 ? " — sold out" : ""}</button>`).join("")}</div><input type="hidden" name="size"><label for="quantity">QUANTITY</label><input id="quantity" name="quantity" type="number" min="1" max="99" value="1" style="width:90px"><p id="product-error" class="error" role="alert"></p><button class="button" type="submit">ADD TO BAG ${arrow}</button></form><div class="detail-note">COLLECTION 001 &nbsp; / &nbsp; ILLUSTRATIVE SAMPLE PRODUCT<br>MYR pricing. Shipping and payments are simulated in this sample.</div></div></div></section>`;
+  return `<section class="page"><span class="small-label">${link("/shop", "COLLECTION 001")} / ${e(p.category)}</span><div class="detail">${productViewer(p)}<div class="detail-copy"><span class="small-label">${e(p.tag || "CROWNETIC / 001")}</span><h1>${e(p.name)}</h1><p class="price">${money(p.price_sen)}</p><p class="description">${e(p.description)}</p><form id="add-form" data-product="${e(p.id)}"><label>SELECT YOUR SIZE</label><div class="size-row" role="group" aria-label="Available sizes">${p.variants.map((v) => `<button class="size" type="button" data-size="${e(v.size)}" ${v.stock < 1 ? "disabled" : ""} aria-pressed="false">${e(v.size)}${v.stock < 1 ? " — sold out" : ""}</button>`).join("")}</div><input type="hidden" name="size"><label for="quantity">QUANTITY</label><input id="quantity" name="quantity" type="number" min="1" max="99" value="1" style="width:90px"><p id="product-error" class="error" role="alert"></p><button class="button" type="submit">ADD TO BAG ${arrow}</button></form><div class="detail-note">COLLECTION 001 &nbsp; / &nbsp; ILLUSTRATIVE SAMPLE PRODUCT<br>MYR pricing. Shipping and payments are simulated in this sample.</div></div></div></section>`;
 }
 function bagPage() {
   if (!bag.length)
@@ -122,7 +126,7 @@ async function adminPage() {
   return `<section class="page"><div class="section-top"><div><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading" style="margin-bottom:0">THE PRODUCT ROOM.</h1></div>${connected ? '<button class="small-button" data-signout>SIGN OUT</button>' : '<div><button class="small-button" data-reset>RESET DEMO</button> <button class="small-button" data-signout>SIGN OUT</button></div>'}</div><div class="notice">${connected ? "Supabase catalogue. Only authorized administrators can publish products." : "SAMPLE ADMIN — Signed in as admin@123. Changes are saved in this browser only. Publish a product here to see it in the shop."}</div><div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div></section>`;
 }
 function editor(p) {
-  return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
+  return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><div class="form-grid">${["left", "right"].map((side) => `<div class="field"><label for="view-${side}">${side} angle image URL (optional)</label><input id="view-${side}" name="view-${side}" value="${e(p?.[`view_${side}`] || "")}"><label for="file-${side}" style="margin-top:10px">Upload ${side} angle</label><input id="file-${side}" type="file" accept="image/jpeg,image/png,image/webp"></div>`).join("")}</div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
 }
 function notFound() {
   return `<section class="page empty"><h1 class="page-heading">THIS WAY BACK.</h1><p>We couldn't find that page or product.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section>`;
@@ -157,6 +161,7 @@ async function render({ scroll = true } = {}) {
       mountScrollEffect();
       mountProductEffects();
     }
+    if (path.startsWith("/product/")) mountProductViewer();
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {
@@ -279,6 +284,21 @@ document.addEventListener("submit", async (event) => {
       let image_url = data.get("image");
       const file = form.querySelector("[type=file]").files[0];
       if (file) image_url = await catalog.upload(file);
+      const angleViews = {};
+      for (const side of ["left", "right"]) {
+        const sideFile = form.querySelector(`#file-${side}`).files[0];
+        angleViews[`view_${side}`] = sideFile
+          ? await catalog.upload(sideFile)
+          : String(data.get(`view-${side}`) || "").trim();
+      }
+      const existing = allProducts.find((p) => p.id === form.dataset.id);
+      const view_sprite =
+        existing &&
+        existing.image_url === image_url &&
+        !angleViews.view_left &&
+        !angleViews.view_right
+          ? existing.view_sprite || ""
+          : "";
       await catalog.save(
         {
           name: data.get("name").trim(),
@@ -286,6 +306,8 @@ document.addEventListener("submit", async (event) => {
           price_sen: priceSen(data.get("price")),
           description: data.get("description").trim(),
           image_url,
+          ...angleViews,
+          view_sprite,
           published: data.has("published"),
           variants: ["S", "M", "L", "XL", "ONE SIZE"].map((size) => ({
             size,

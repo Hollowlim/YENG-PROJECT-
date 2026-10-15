@@ -1,0 +1,115 @@
+.product-angle-viewer {
+  min-width: 0;
+}
+.viewer-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  aspect-ratio: 2/3;
+  background: #d6d5ce;
+  touch-action: pan-y;
+  cursor: grab;
+}
+.viewer-stage:active {
+  cursor: grabbing;
+}
+.viewer-stage .angle-image {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.viewer-index {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 7px 11px;
+  border-radius: 6px;
+  background: #10110edd;
+  color: #f1efe9;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.viewer-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #ffffff40;
+  border-radius: 50%;
+  background: #151613c9;
+  color: white;
+  font:
+    28px/1 Arial,
+    sans-serif;
+}
+.viewer-arrow.previous {
+  left: 16px;
+}
+.viewer-arrow.next {
+  right: 16px;
+}
+.viewer-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-top: 15px;
+}
+.angle-button {
+  padding: 13px 12px;
+  border: 1px solid var(--line);
+  background: #11120f;
+  color: var(--muted);
+  border-radius: 9px;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.angle-button.active {
+  border-color: #d7d9ce;
+  background: #eeefe5;
+  color: #11120f;
+}
+.viewer-hint,
+.viewer-disclosure {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-top: 14px;
+}
+.viewer-disclosure {
+  font-size: 10px;
+  letter-spacing: 0;
+  margin: 6px 0;
+}
+@media (max-width: 600px) {
+  .viewer-stage {
+    max-height: 72svh;
+    aspect-ratio: 2/3;
+  }
+  .viewer-arrow {
+    width: 38px;
+    height: 38px;
+  }
+}
+.viewer-stage {
+  width: min(100%, 360px);
+  margin-inline: auto;
+  aspect-ratio: 1/2;
+}
+.viewer-stage .angle-image {
+  object-fit: contain;
+}
+@media (max-width: 600px) {
+  .viewer-stage {
+    width: min(100%, 36svh);
+    max-height: none;
+    aspect-ratio: 1/2;
+  }
+}

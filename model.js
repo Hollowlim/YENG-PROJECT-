@@ -38,6 +38,10 @@ export function validateProduct(p) {
     throw Error("Name, category and description are required.");
   if (!Number.isSafeInteger(p.price_sen) || p.price_sen < 0)
     throw Error("Enter a valid price.");
+  for (const field of ["view_left", "view_right", "view_sprite"]) {
+    if (p[field] && !safeImage(p[field]))
+      throw Error("Use a valid image URL for each viewing angle.");
+  }
   if (!safeImage(p.image_url))
     throw Error("Use an HTTPS image URL or upload a JPEG, PNG or WebP.");
   if (

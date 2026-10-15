@@ -2,6 +2,7 @@ import { validateProduct, restore, visibleProducts } from "./model.js";
 export const seed = [
   {
     id: "core-heavyweight-tee",
+    view_sprite: "/assets/tee-views.png",
     name: "Core Heavyweight Tee",
     category: "Tees",
     description:
@@ -70,7 +71,13 @@ function local() {
       return false;
     }
   })
-    ? products
+    ? products.map((p) =>
+        p.id === "core-heavyweight-tee" &&
+        !Object.hasOwn(p, "view_sprite") &&
+        p.image_url.endsWith("/tee.png")
+          ? { ...p, view_sprite: seed[0].view_sprite }
+          : p,
+      )
     : structuredClone(seed);
 }
 export const catalog = {

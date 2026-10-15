@@ -293,3 +293,96 @@ test("dark rounded homepage campaign expands on page scroll", async ({
     fullPage: false,
   });
 });
+
+test("shirt opens a front left right viewer with keyboard and swipe controls", async ({
+  page,
+}) => {
+  await page.goto("/#/product/core-heavyweight-tee");
+  const viewer = page.getByRole("region", { name: "Product angle viewer" });
+  await expect(viewer).toBeVisible();
+  await expect(
+    viewer.getByRole("button", { name: "Front view", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await viewer.getByRole("button", { name: "Left view", exact: true }).click();
+  await expect(viewer.locator(".angle-image")).toHaveAttribute(
+    "alt",
+    "Core Heavyweight Tee — left view",
+  );
+  await viewer.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    viewer.getByRole("button", { name: "Front view", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await viewer.getByRole("button", { name: "Right view", exact: true }).click();
+  await expect(viewer.locator(".angle-image")).toHaveAttribute(
+    "alt",
+    "Core Heavyweight Tee — right view",
+  );
+  await page.screenshot({
+    path: "test-results/shirt-angle-viewer.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await viewer.scrollIntoViewIfNeeded();
+  await viewer.locator(".viewer-stage").dispatchEvent("pointerdown", {
+    clientX: 200,
+    clientY: 100,
+    pointerType: "touch",
+  });
+  await viewer.locator(".viewer-stage").dispatchEvent("pointerup", {
+    clientX: 280,
+    clientY: 100,
+    pointerType: "touch",
+  });
+  await expect(
+    viewer.getByRole("button", { name: "Front view", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("admin can publish uploaded angle photos and the product viewer uses them", async ({
+  page,
+}) => {
+  await page.goto("/#/admin");
+  await page.getByLabel("Username", { exact: true }).fill("admin@123");
+  await page.getByLabel("Password", { exact: true }).fill("admin@123");
+  await page.getByRole("button", { name: "SIGN IN", exact: true }).click();
+  await page
+    .getByLabel("Product name", { exact: true })
+    .fill("Angle Upload Tee");
+  await page.getByLabel("Price (MYR)").fill("189");
+  await page
+    .getByLabel("Description", { exact: true })
+    .fill("A product with uploaded angle photos.");
+  await page
+    .getByLabel("Upload left angle", { exact: true })
+    .setInputFiles({
+      name: "left.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+        "base64",
+      ),
+    });
+  await page
+    .getByLabel("right angle image URL (optional)", { exact: true })
+    .fill("./public/assets/tee.png");
+  await page.getByLabel("M", { exact: true }).fill("3");
+  await page.getByLabel("PUBLISHED — VISIBLE IN SHOP").check();
+  await page.getByRole("button", { name: "CREATE PRODUCT" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Angle Upload Tee" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
+  await page.getByRole("link").filter({ hasText: "Angle Upload Tee" }).click();
+  await page.getByRole("button", { name: "Left view", exact: true }).click();
+  await expect(page.locator(".angle-image")).toHaveAttribute(
+    "src",
+    /^data:image\/png;base64,/,
+  );
+  await page.reload();
+  await page.getByRole("button", { name: "Right view", exact: true }).click();
+  await expect(page.locator(".angle-image")).toHaveAttribute(
+    "src",
+    "./public/assets/tee.png",
+  );
+});
