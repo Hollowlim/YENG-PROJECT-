@@ -410,7 +410,7 @@ test("all sample products have three angles and reflective detail views", async 
   await expect(page.locator(".product-image .reflective-card")).toHaveCount(3);
 });
 
-test("page navigation shows electric monogram and product angle button row is removed", async ({
+test("page navigation shows metallic monogram and product angle button row is removed", async ({
   page,
 }) => {
   await page.goto("/");
@@ -423,7 +423,7 @@ test("page navigation shows electric monogram and product angle button row is re
       const loader = document.querySelector("#page-loader");
       if (loader) {
         window.loaderSeen = true;
-        if (loader.querySelector(".electric-logo canvas"))
+        if (loader.querySelector(".metallic-paint canvas"))
           window.electricSeen = true;
       }
     });

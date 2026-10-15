@@ -109,8 +109,10 @@ All three existing sample products (tee, cargo trousers and cap) include distinc
 
 For new admin products, supply the main/front photo plus left/right URLs or uploads. Missing photos remain visibly unavailable rather than showing a repeated front image as another angle. Older untouched demo products receive their new sample views automatically; customized angle uploads are preserved.
 
-## Electric monogram page loading
+## Metallic monogram page loading
 
-Page navigation displays the supplied CRWN-style monogram with React Bits ElectricLogo (exact pasted JavaScript/CSS source in `components/ElectricLogo` and its `ogl` dependency). Integration is in `components/page-loader.jsx`. The overlay runs briefly while each route loads, cleans up its WebGL context afterwards, and uses a static monogram for reduced-motion users or if WebGL fails. Product quantity and editor updates do not force another page-loading animation.
+Page navigation displays the supplied CRWN-style monogram with React Bits MetallicPaint (exact pasted JavaScript/CSS source in `components/MetallicPaint`). Integration is in `components/page-loader.jsx`. The overlay runs briefly while each route loads, cleans up its WebGL context afterwards, and uses a static monogram for reduced-motion users or if WebGL fails. Product quantity and editor updates do not force another page-loading animation.
 
 The Left / Front / Right text-button row has been removed. Product angles still work with the previous/next arrows, keyboard arrows and swipes. The current-angle label remains available for orientation and screen readers.
+
+The loading monogram now uses liquid chrome MetallicPaint instead of electricity. The first load lasts at least 1.5 seconds, and page changes at least 1 second; reduced-motion users get a short static monogram. `components/prepare-monogram.js` keys the existing white backdrop into an in-memory alpha mask for MetallicPaint without altering the source logo. No new dependencies were needed.

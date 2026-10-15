@@ -1,7 +1,8 @@
 import { createElement, Component } from "react";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
-import ElectricLogo from "./ElectricLogo/ElectricLogo.jsx";
+import MetallicPaint from "./MetallicPaint/MetallicPaint.jsx";
+import { prepareMonogram } from "./prepare-monogram.js";
 import "./page-loader.css";
 let current = 0;
 import logo from "../public/assets/loading-monogram.png";
@@ -22,37 +23,41 @@ export function showPageLoader() {
   host.setAttribute("role", "status");
   host.setAttribute("aria-label", "Loading CROWNETIC");
   host.setAttribute("aria-live", "polite");
-  host.innerHTML = `<div class="page-loader-brand"><div class="loader-art"><img src="${logo}" alt="CROWNETIC monogram" class="loader-static"><div class="loader-electric"></div></div><p>CROWNETIC</p><span>OPENING THE ARCHIVE</span></div>`;
+  host.innerHTML = `<div class="page-loader-brand"><div class="loader-art"><img src="${logo}" alt="CROWNETIC monogram" class="loader-static"><div class="loader-effect"></div></div><p>CROWNETIC</p><span>OPENING THE ARCHIVE</span></div>`;
   document.body.append(host);
   document.querySelector("#app")?.setAttribute("aria-busy", "true");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let root;
   if (!reduced) {
-    root = createRoot(host.querySelector(".loader-electric"));
-    flushSync(() =>
-      root.render(
-        createElement(
-          EffectBoundary,
-          null,
-          createElement(ElectricLogo, {
-            src: logo,
-            color: "#ffffff",
-            glowColor: "#dad2ff",
-            scale: 0.7,
-            intensity: 1.4,
-            glow: 1.2,
-            fill: 0.08,
-            strands: 4,
-            bend: 0.6,
-            crackle: 1.5,
-            arcs: 1,
-            speed: 2.5,
-            interactive: false,
-            onRender: () => host.classList.add("effect-ready"),
-          }),
-        ),
-      ),
-    );
+    root = createRoot(host.querySelector(".loader-effect"));
+    prepareMonogram(logo)
+      .then((imageSrc) => {
+        if (!host.isConnected) return;
+        flushSync(() =>
+          root.render(
+            createElement(
+              EffectBoundary,
+              null,
+              createElement(MetallicPaint, {
+                imageSrc,
+                color: "#ffffff",
+                backgroundColor: "transparent",
+                density: 2,
+                softness: 0.14,
+                dispersion: 0.2,
+                distortion: 0.07,
+                edgeBend: 0.6,
+                angle: 70,
+                speed: 1.2,
+                scale: 0.78,
+                mouseTilt: 0,
+                intro: false,
+              }),
+            ),
+          ),
+        );
+      })
+      .catch(() => {});
   }
   return {
     id,

@@ -25,7 +25,7 @@
   object-fit: contain;
   opacity: 0.75;
 }
-.loader-electric {
+.loader-effect {
   position: absolute;
   inset: 0;
 }
@@ -55,4 +55,15 @@
 .loader-static {
   filter: invert(1);
   mix-blend-mode: screen;
+}
+.loader-effect {
+  inset: 12%;
+}
+.loader-static {
+  opacity: 0.12;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-static {
+    opacity: 1;
+  }
 }
