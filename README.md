@@ -108,3 +108,9 @@ Admin now has optional left/right image URLs and uploads; the existing primary i
 All three existing sample products (tee, cargo trousers and cap) include distinct illustrative left/front/right images. The same ReflectiveCard effect now wraps homepage cards, shop cards and each large angle viewer. Tilt, shine, keyboard navigation and swipe controls work together; camera capture remains disabled. The pasted component source matches the existing upstream JSX.
 
 For new admin products, supply the main/front photo plus left/right URLs or uploads. Missing photos remain visibly unavailable rather than showing a repeated front image as another angle. Older untouched demo products receive their new sample views automatically; customized angle uploads are preserved.
+
+## Electric monogram page loading
+
+Page navigation displays the supplied CRWN-style monogram with React Bits ElectricLogo (exact pasted JavaScript/CSS source in `components/ElectricLogo` and its `ogl` dependency). Integration is in `components/page-loader.jsx`. The overlay runs briefly while each route loads, cleans up its WebGL context afterwards, and uses a static monogram for reduced-motion users or if WebGL fails. Product quantity and editor updates do not force another page-loading animation.
+
+The Left / Front / Right text-button row has been removed. Product angles still work with the previous/next arrows, keyboard arrows and swipes. The current-angle label remains available for orientation and screen readers.

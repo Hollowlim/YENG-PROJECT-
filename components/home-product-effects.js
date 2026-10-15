@@ -14,8 +14,18 @@ export function mountProductEffects() {
     ".product-image, .viewer-stage",
   )) {
     // Retain the storefront's already-escaped photo, badge and shopping link.
+    const arrows = host.matches(".viewer-stage")
+      ? [...host.querySelectorAll(".viewer-arrow")]
+      : [];
+    arrows.forEach((button) => button.remove());
     const content = host.innerHTML;
-    const root = createRoot(host);
+    let surface = host;
+    if (arrows.length) {
+      surface = document.createElement("div");
+      surface.className = "viewer-reflection-surface";
+      host.replaceChildren(surface, ...arrows);
+    }
+    const root = createRoot(surface);
     roots.push(root);
     flushSync(() =>
       root.render(

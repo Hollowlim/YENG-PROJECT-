@@ -46,3 +46,15 @@
 .viewer-stage .reflective-product-photo {
   height: 100%;
 }
+
+.viewer-reflection-surface {
+  position: absolute;
+  inset: 0;
+}
+.viewer-stage .crownetic-reflective-product {
+  position: absolute;
+  inset: 0;
+}
+.viewer-stage > .viewer-arrow {
+  z-index: 5;
+}

@@ -69,6 +69,7 @@ test("responsive homepage has working imagery and navigation", async ({
 }) => {
   await page.setViewportSize({ width: 1440, height: 1024 });
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   await expect(
     page.getByRole("heading", { name: "BUILT TO STAND APART." }),
   ).toBeVisible();
@@ -98,6 +99,7 @@ test("corrupt storage recovers without breaking the storefront", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   await page.evaluate(() => {
     localStorage.setItem("crownetic.catalog.v1", "broken");
     localStorage.setItem("crownetic.bag.v1", "broken");
@@ -111,6 +113,7 @@ test("corrupt storage recovers without breaking the storefront", async ({
 
 test("malformed saved bag entries do not crash the site", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   await page.evaluate(() =>
     localStorage.setItem(
       "crownetic.bag.v1",
@@ -191,6 +194,7 @@ test("homepage product cards reflect pointer movement and retain shopping links"
   page,
 }) => {
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   const cards = page.locator(".home-products .reflective-card");
   await expect(cards).toHaveCount(3);
   await expect(cards.first().locator("canvas")).toBeVisible();
@@ -239,6 +243,7 @@ test("reflective products respect reduced motion without requesting camera acces
       };
   });
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   const card = page.locator(".home-products .reflective-card").first();
   await expect(card).toBeVisible();
   await card.scrollIntoViewIfNeeded();
@@ -262,6 +267,7 @@ test("dark rounded homepage campaign expands on page scroll", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
   await expect(page.locator(".scroll-expand")).toHaveCount(1);
   const frame = page.locator(".scroll-expand__frame");
   const before = await frame.evaluate((el) => getComputedStyle(el).clipPath);
@@ -300,20 +306,18 @@ test("shirt opens a front left right viewer with keyboard and swipe controls", a
   await page.goto("/#/product/core-heavyweight-tee");
   const viewer = page.getByRole("region", { name: "Product angle viewer" });
   await expect(viewer).toBeVisible();
-  await expect(
-    viewer.getByRole("button", { name: "Front view", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await viewer.getByRole("button", { name: "Left view", exact: true }).click();
+  await expect(viewer.locator(".viewer-index")).toHaveText("FRONT VIEW");
+  await viewer
+    .getByRole("button", { name: "Previous angle", exact: true })
+    .click();
   await expect(viewer.locator(".angle-image")).toHaveAttribute(
     "alt",
     "Core Heavyweight Tee — left view",
   );
   await viewer.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(
-    viewer.getByRole("button", { name: "Front view", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await viewer.getByRole("button", { name: "Right view", exact: true }).click();
+  await expect(viewer.locator(".viewer-index")).toHaveText("FRONT VIEW");
+  await viewer.getByRole("button", { name: "Next angle", exact: true }).click();
   await expect(viewer.locator(".angle-image")).toHaveAttribute(
     "alt",
     "Core Heavyweight Tee — right view",
@@ -334,9 +338,7 @@ test("shirt opens a front left right viewer with keyboard and swipe controls", a
     clientY: 100,
     pointerType: "touch",
   });
-  await expect(
-    viewer.getByRole("button", { name: "Front view", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(viewer.locator(".viewer-index")).toHaveText("FRONT VIEW");
 });
 
 test("admin can publish uploaded angle photos and the product viewer uses them", async ({
@@ -372,13 +374,15 @@ test("admin can publish uploaded angle photos and the product viewer uses them",
   ).toBeVisible();
   await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
   await page.getByRole("link").filter({ hasText: "Angle Upload Tee" }).click();
-  await page.getByRole("button", { name: "Left view", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Previous angle", exact: true })
+    .click();
   await expect(page.locator(".angle-image")).toHaveAttribute(
     "src",
     /^data:image\/png;base64,/,
   );
   await page.reload();
-  await page.getByRole("button", { name: "Right view", exact: true }).click();
+  await page.getByRole("button", { name: "Next angle", exact: true }).click();
   await expect(page.locator(".angle-image")).toHaveAttribute(
     "src",
     "./public/assets/tee.png",
@@ -393,13 +397,51 @@ test("all sample products have three angles and reflective detail views", async 
     const viewer = page.getByRole("region", { name: "Product angle viewer" });
     await expect(viewer.locator(".reflective-card")).toHaveCount(1);
     await expect(viewer.locator("canvas")).toBeVisible();
-    for (const name of ["Left view", "Front view", "Right view"]) {
-      const button = viewer.getByRole("button", { name, exact: true });
-      await expect(button).toBeEnabled();
-      await button.click();
-      await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#page-loader")).toBeHidden();
+    await expect(viewer.locator(".viewer-controls")).toHaveCount(0);
+    for (const angle of ["RIGHT VIEW", "LEFT VIEW", "FRONT VIEW"]) {
+      await viewer
+        .getByRole("button", { name: "Next angle", exact: true })
+        .click();
+      await expect(viewer.locator(".viewer-index")).toHaveText(angle);
     }
   }
   await page.goto("/#/shop");
   await expect(page.locator(".product-image .reflective-card")).toHaveCount(3);
+});
+
+test("page navigation shows electric monogram and product angle button row is removed", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator("#page-loader")).toBeHidden();
+  await expect(page.locator("#page-loader")).toBeHidden();
+  await page.evaluate(() => {
+    window.loaderSeen = false;
+    window.electricSeen = false;
+    const observer = new MutationObserver(() => {
+      const loader = document.querySelector("#page-loader");
+      if (loader) {
+        window.loaderSeen = true;
+        if (loader.querySelector(".electric-logo canvas"))
+          window.electricSeen = true;
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+  await page.getByRole("link", { name: "SHOP ALL", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.loaderSeen)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.electricSeen)).toBe(true);
+  await expect(page.locator("#page-loader")).toBeHidden();
+  await page
+    .getByRole("link")
+    .filter({ hasText: "Core Heavyweight Tee" })
+    .click();
+  await expect(page.locator("#page-loader")).toBeHidden();
+  await expect(page.locator(".viewer-controls")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Front view", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Next angle" }).click();
+  await expect(page.locator(".viewer-index")).toHaveText("RIGHT VIEW");
 });

@@ -1,3 +1,4 @@
+import { showPageLoader, hidePageLoader } from "./components/page-loader.jsx";
 import {
   productViewer,
   mountProductViewer,
@@ -131,12 +132,16 @@ function editor(p) {
 function notFound() {
   return `<section class="page empty"><h1 class="page-heading">THIS WAY BACK.</h1><p>We couldn't find that page or product.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section>`;
 }
+let renderVersion = 0;
 async function render({ scroll = true } = {}) {
+  const version = ++renderVersion;
+  const loader = scroll ? showPageLoader() : null;
   clearProductEffects();
   clearScrollEffect();
   app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
   try {
     products = await catalog.list();
+    if (version !== renderVersion) return;
     const path = decodeURIComponent(
       location.hash.startsWith("#/")
         ? location.hash.slice(1).split("?")[0]
@@ -156,6 +161,7 @@ async function render({ scroll = true } = {}) {
     else if (path === "/about") content = about();
     else if (path === "/admin") content = await adminPage();
     else content = notFound();
+    if (version !== renderVersion) return;
     app.innerHTML = shell(content);
     if (path === "/") {
       mountScrollEffect();
@@ -165,9 +171,12 @@ async function render({ scroll = true } = {}) {
     document.title = `${path === "/admin" ? "Studio" : path === "/shop" ? "Collection 001" : "Built to stand apart."} — CROWNETIC`;
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {
+    if (version !== renderVersion) return;
     app.innerHTML = shell(
       `<section class="page empty"><h1 class="page-heading">A MOMENT, PLEASE.</h1><p>We couldn't load the catalogue.</p><p class="error">${e(error.message)}</p><button class="button" data-retry>TRY AGAIN ${arrow}</button></section>`,
     );
+  } finally {
+    if (loader) await hidePageLoader(loader);
   }
 }
 function navigate(path) {

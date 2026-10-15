@@ -1,0 +1,58 @@
+#page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: #090909;
+  color: #f4f2ec;
+  cursor: progress;
+}
+.page-loader-brand {
+  width: min(90vw, 380px);
+  text-align: center;
+}
+.loader-art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+.loader-static {
+  position: absolute;
+  width: 62%;
+  height: 62%;
+  inset: 19%;
+  object-fit: contain;
+  opacity: 0.75;
+}
+.loader-electric {
+  position: absolute;
+  inset: 0;
+}
+.effect-ready .loader-static {
+  opacity: 0;
+}
+.page-loader-brand p {
+  font: 500 13px var(--sans);
+  letter-spacing: 6px;
+  margin: 5px 0 15px;
+}
+.page-loader-brand > span {
+  font: 9px var(--sans);
+  letter-spacing: 2px;
+  color: #a6a39a;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-static {
+    opacity: 1;
+  }
+}
+#page-loader {
+  touch-action: none;
+  overscroll-behavior: contain;
+}
+
+.loader-static {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}

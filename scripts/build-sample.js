@@ -10,7 +10,7 @@ const result = await build({
   minify: true,
   write: false,
   outdir: "sample-build",
-  loader: { ".woff": "dataurl", ".woff2": "dataurl" },
+  loader: { ".woff": "dataurl", ".woff2": "dataurl", ".png": "dataurl" },
   define: { "import.meta.env": JSON.stringify(env) },
 });
 const js = result.outputFiles
