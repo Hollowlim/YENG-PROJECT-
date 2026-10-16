@@ -43,7 +43,7 @@ Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor
 
 Customer email verification itself uses Supabase Auth and requires no additional application table. Database setup does not enable email confirmation or SMTP; configure those Dashboard settings separately.
 
-Copy `.env.example` to the uncommitted `.env.local` file and set these two public browser settings from the same Supabase project:
+CROWNETIC’s public project URL and publishable key are already included in `site-config.js`. To use a different project, copy `.env.example` to the uncommitted `.env.local` file and set both public browser settings from that project:
 
 ```dotenv
 VITE_SUPABASE_URL=
@@ -52,7 +52,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=
 
 Never use a Supabase service-role/secret key here. Restart the development server after changing environment settings, or run `npm run build` again before publishing the generated `index.html` and `public` assets. Deploy over HTTPS.
 
-With no Supabase project configured, the existing local sample remains a browser-only demo. It does not send verification emails or claim that a customer's mailbox has been verified.
+For a browser-only sample, build with `--demo --out-dir .test-site`, or explicitly override both public settings with empty strings in `.env.local`. The local demo remains browser-only. It does not send verification emails or claim that a customer's mailbox has been verified.
 
 ## Account flow and SDK calls
 

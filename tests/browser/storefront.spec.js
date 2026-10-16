@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures.js";
 test("admin publishing flows through shop, bag, persistence and sample checkout", async ({
   page,
 }) => {

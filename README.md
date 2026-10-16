@@ -1,18 +1,18 @@
 # CROWNETIC
 
-A working premium streetwear sample for Malaysia, with MYR prices and an ivory editorial design. Built with **HTML, CSS and JavaScript**, using Vite for development and bundling.
+A premium black-and-chrome streetwear storefront for Malaysia with MYR prices. Public Supabase connection settings for CROWNETIC are included in `site-config.js`; checkout remains a simulation. Built with **HTML, CSS and JavaScript**, using Vite for development and bundling.
 
-## Open the sample — no installation needed
+## Open the website — no installation needed
 
 1. Download this repository as a ZIP from GitHub and **extract the entire folder**.
 2. Double-click **`index.html`**. Open it in Chrome, Edge or Firefox.
 3. Browse the user storefront. Click **Account** for customer or administrator login.
-4. Sign in with username **`admin@123`** and password **`admin@123`**.
+4. Sign in with your real Supabase account. Administrator access requires a matching UUID in `public.admin_users`; the fixed `admin@123` demo login is disabled in connected mode.
 5. Add an item, choose stock, check Published and save. Go to Shop All to see it.
 
 Keep `index.html` beside the `public` folder: product and campaign images live in `public/assets`. CSS, fonts and JavaScript are already bundled inside the HTML. Do not open `source.html` directly; it is the development entry.
 
-The requested fixed login is **sample-only**, implemented in the browser; it is not production authentication. Changes remain in this browser. Signing out hides the admin interface; Supabase provides actual access control when connected later. Checkout is simulated.
+Connected mode uses Supabase Auth, catalogue storage, and database access rules. The repository includes only a public publishable key, never a service-role/secret key. Existing local demo products and accounts are not transferred automatically: add real products through an authorized admin account. Checkout is still simulated. For the isolated browser-only sample with `admin@123`, use the demo command below.
 
 Navigation uses `#/shop`, `#/admin`, and similar hash routes so refresh works from a local file or static hosting, including GitHub Pages.
 
@@ -22,9 +22,12 @@ Navigation uses `#/shop`, `#/admin`, and similar hash routes so refresh works fr
 npm ci
 npm run dev
 npm run build
+
+# Optional browser-only demo, with no Supabase requests:
+node scripts/build-sample.js --demo --out-dir .test-site
 ```
 
-The editable source is `source.html`, `styles.css`, `app.js`, `catalog.js` and `model.js`. `npm run build` regenerates the ready-to-open root `index.html` and the `dist` folder. Source edits require a rebuild to update the sample HTML. The dev server opens `/source.html` for source development.
+The editable source is `source.html`, `styles.css`, `app.js`, `catalog.js` and `model.js`. `npm run build` regenerates the ready-to-open root `index.html` and the `dist` folder using the public project defaults, with optional `VITE_` overrides. `--demo --out-dir .test-site` writes only to the ignored demo directory and preserves the connected root build. Source edits require a rebuild to update the sample HTML. The dev server opens `/source.html` for source development.
 
 ## Where the code is
 
@@ -39,30 +42,25 @@ Fonts are bundled locally through Fontsource (Barlow Condensed and DM Sans); no 
 
 ## Try adding products
 
-Open `/admin`. Sign in using the sample username `admin@123` and password `admin@123`. Demo mode is explicitly labeled. Enter a name, description, price, image and stock, check **Published**, and create the product. It appears in `/shop` immediately. Drafts are hidden from the public shop. Use stock 0 for unavailable sizes. The editor includes S, M, L, XL and ONE SIZE.
+Use Account to sign in with an authorized Supabase admin email and password. In an explicitly built demo, use `admin@123` / `admin@123`; demo mode is labeled. Enter a name, description, price, image and stock, check **Published**, and create the product. It appears in `/shop` immediately. Drafts are hidden from the public shop. Use stock 0 for unavailable sizes. The editor includes S, M, L, XL and ONE SIZE.
 
 Product images can be HTTPS URLs or JPEG/PNG/WebP uploads up to 2 MB. Demo uploads and catalogue edits are stored in this browser's local storage; they are not shared between customers or devices. If browser storage is full, save errors are displayed without discarding the form. Reset Demo restores the original sample catalogue after confirmation. The bag also persists locally, independently of catalogue resets.
 
 ## Connect Supabase
 
-The site works without Supabase in local demo mode. To use real catalogue storage:
+This checkout defaults to CROWNETIC’s project through `site-config.js`. A publishable key is designed to be bundled in the browser; RLS and admin membership enforce access. To configure another project or review the setup:
 
 1. Create or choose your Supabase project.
 2. Open **SQL Editor → New query**, paste the entire [supabase/setup.sql](supabase/setup.sql) file and run it as `postgres`. It combines the catalogue, product photography and customer rewards setup. It can be rerun against this project's existing schema without duplicate-table/policy/function errors and preserves stored rows. It refreshes the named application policies, product functions, and public `product-images` bucket settings. Expect `CROWNETIC database setup complete`. The current numbered `001`–`003` scripts are also rerunnable if you prefer the separate steps; use their latest versions in order. Older copies may still raise “already exists” errors. Each corrected numbered script returns its own completion message. An unrelated or differently shaped schema still requires review.
-3. Create an administrator account using Supabase Authentication > Users.
-4. In the SQL editor, add its UUID to the administrator allowlist:
+3. Create an administrator account using **Supabase → Authentication → Users → Add user**. Set the password there; do not share or commit it. For your manually created owner account you can enable **Auto Confirm User**, or complete email verification through the configured provider.
+4. Open [supabase/grant_admin.sql](supabase/grant_admin.sql), replace `YOUR_ADMIN_EMAIL_HERE` with that verified account's email, and run it in SQL Editor as `postgres`. It refuses missing, unconfirmed or ambiguous accounts, preserves existing admins, and returns **Admin access enabled**. The generic file intentionally contains no personal email.
 
-   ```sql
-   insert into public.admin_users(user_id) values ('YOUR-AUTH-USER-UUID')
-   on conflict (user_id) do nothing;
-   ```
-
-5. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from your project. These are browser-safe public settings. **Never put a service-role key in the frontend.** Restart Vite after changing them.
+5. The existing public connection is in `site-config.js`. To override it, copy `.env.example` to `.env.local` and set both `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from your project. Explicitly leaving both empty selects local demo mode. These are browser-safe public settings. **Never put a service-role key in the frontend.** Restart Vite after changing them.
 6. Open `/admin`, sign in and create products. A new backend starts empty: local demo edits are not automatically migrated. Upload images or provide HTTPS URLs for connected products; local `/assets/` URLs are demo-only.
 
 Both settings must be supplied together. Remote failures show errors instead of silently switching to a sample catalogue. Row-level security restricts product management to allowlisted admins. Public readers see only published products and their variants. The storage bucket is public: all uploaded images, including those intended for draft products, are public assets. Do not upload confidential content.
 
-Supabase integration is implemented but **not live-validated** because no project settings have been supplied. Before launch, verify sign-in, nonadmin denial, published/draft visibility, transactional saves and image upload permissions against your actual project.
+The project URL and public publishable key have been configured. **Live API validation remains blocked by this cloud workspace’s network policy**, which returned proxy `403 Forbidden` for the Supabase host; this is not evidence that the key is invalid. The required hostname was saved to the environment network draft for review/publication. No real signups, verification emails, or database writes were performed during connection checks. Before launch, verify sign-in, nonadmin denial, published/draft visibility, transactional saves and image upload permissions against your actual project.
 
 ## Payments and shipping
 
@@ -76,7 +74,7 @@ npm run build
 npm run test:browser
 ```
 
-Browser tests use `/usr/bin/chromium` when present. Else run `npx playwright install chromium` and set `CHROMIUM_PATH` to the installed Chrome executable, or adjust the launch settings in `playwright.config.js`. Browser tests cover admin publishing, draft visibility, bag persistence, simulated checkout, corrupt storage recovery and a 390px layout. They do not validate a live Supabase project.
+Browser tests use `/usr/bin/chromium` when present. Else run `npx playwright install chromium` and set `CHROMIUM_PATH` to the installed Chrome executable, or adjust the launch settings in `playwright.config.js`. Browser tests cover admin publishing, draft visibility, bag persistence, simulated checkout, corrupt storage recovery and a 390px layout. The test server builds and serves an isolated demo in `.test-site`, and the browser fixture blocks/fails any attempt to contact the real Supabase project. Email-verification tests use a mocked project. Tests do not validate the live Supabase project.
 
 `npm run preview` serves the production build. The bundled sample uses hash routes and needs no server rewrite rules. This repository has not been deployed.
 
@@ -102,7 +100,7 @@ The original ambient waves now form a fixed, page-wide background on customer ro
 
 Open the Core Heavyweight Tee to view the illustrative model from the **left, front and right**. Use angle buttons, previous/next arrows, keyboard arrow keys or a horizontal swipe/drag. These are three photographs, not a live 3D garment renderer. Products without side photography keep their front image and disable missing angles.
 
-Admin now has optional left/right image URLs and uploads; the existing primary image supplies the front view. Replacing the sample photography switches to those uploaded images. Angle photos persist alongside products in local demo storage. For connected Supabase projects, run `supabase/002_product_angles.sql` after `001_catalog.sql` before saving products with the new editor. Live Supabase verification remains pending project configuration.
+Admin now has optional left/right image URLs and uploads; the existing primary image supplies the front view. Replacing the sample photography switches to those uploaded images. Angle photos persist alongside products in local demo storage. For connected Supabase projects, run `supabase/002_product_angles.sql` after `001_catalog.sql` before saving products with the new editor. Live Supabase verification remains pending network access and real-project checks.
 
 ## All-item views and reflections
 
@@ -128,7 +126,7 @@ The combined `supabase/setup.sql` installs the customer rewards schema along wit
 
 The language selector offers **English, Bahasa Melayu, Chinese and Tamil**, remembers the choice and translates customer account screens and key storefront navigation, controls and checkout labels. Brand copy and product content entered by admin remain in their original language; arbitrary automatic translation is not provided. Language changes preserve form inputs. Admin remains primarily English.
 
-Admin access: click Account and use the shared login form. In the sample, use `admin@123` / `admin@123`; connected accounts are routed by their Supabase `admin_users` membership. The public Studio / Admin footer link has been removed. Customer signup remains customer-only.
+Admin access: click Account and use the shared login form. Connected accounts are routed by their Supabase `admin_users` membership. The optional isolated demo accepts `admin@123` / `admin@123`. The public Studio / Admin footer link has been removed. Customer signup remains customer-only.
 
 ## Customer email verification with Resend
 

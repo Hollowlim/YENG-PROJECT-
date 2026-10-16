@@ -10,9 +10,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm run build && python3 -m http.server 5174 --bind 127.0.0.1",
+    command: "node scripts/build-sample.js --demo --out-dir .test-site && python3 -m http.server 5174 --bind 127.0.0.1 --directory .test-site",
     url: "http://127.0.0.1:5174",
-    reuseExistingServer: true,
+    reuseExistingServer: false,
   },
   reporter: "list",
 });

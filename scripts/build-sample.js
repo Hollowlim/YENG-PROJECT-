@@ -1,7 +1,18 @@
 import { build } from "esbuild";
 import { loadEnv } from "vite";
+import { parseArgs } from "node:util";
+import { resolve } from "node:path";
 import { readFile, writeFile, mkdir, cp } from "node:fs/promises";
-const env = loadEnv("production", process.cwd(), "VITE_");
+const { values: buildOptions } = parseArgs({
+  options: {
+    demo: { type: "boolean", default: false },
+    "out-dir": { type: "string" },
+  },
+});
+// Demo tests must never fall through to the project's public live defaults.
+const env = buildOptions.demo
+  ? { VITE_SUPABASE_URL: "", VITE_SUPABASE_PUBLISHABLE_KEY: "" }
+  : loadEnv("production", process.cwd(), "VITE_");
 const result = await build({
   entryPoints: ["app.js"],
   bundle: true,
@@ -33,10 +44,16 @@ html = html
     '<script type="module" src="/app.js"></script>',
     () => `<script>${js.replaceAll("</script", "<\\/script")}</script>`,
   );
-await writeFile("index.html", html);
-await mkdir("dist", { recursive: true });
-await writeFile("dist/index.html", html);
-await cp("public", "dist/public", { recursive: true });
-console.log(
-  "Built index.html: double-click to open. No server or npm needed to view the sample.",
-);
+if (buildOptions["out-dir"]) {
+  const target = resolve(buildOptions["out-dir"]);
+  await mkdir(target, { recursive: true });
+  await writeFile(resolve(target, "index.html"), html);
+  await cp("public", resolve(target, "public"), { recursive: true });
+  console.log(`Built ${target}/index.html${buildOptions.demo ? " (isolated demo)" : ""}.`);
+} else {
+  await writeFile("index.html", html);
+  await mkdir("dist", { recursive: true });
+  await writeFile("dist/index.html", html);
+  await cp("public", "dist/public", { recursive: true });
+  console.log("Built index.html and dist. Open index.html to view the website.");
+}

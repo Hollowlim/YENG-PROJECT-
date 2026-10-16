@@ -1,3 +1,4 @@
+import { supabasePublicConfig } from "./site-config.js";
 import { validateProduct, restore, visibleProducts } from "./model.js";
 export const seed = [
   {
@@ -51,8 +52,8 @@ export const seed = [
   },
 ];
 const key = "crownetic.catalog.v1";
-const url = import.meta.env.VITE_SUPABASE_URL,
-  token = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL ?? supabasePublicConfig.url,
+  token = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? supabasePublicConfig.publishableKey;
 export const connected = Boolean(url && token);
 let client;
 export async function supabase() {

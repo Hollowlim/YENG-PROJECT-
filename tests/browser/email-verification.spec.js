@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { build } from 'esbuild';
 import { readFile } from 'node:fs/promises';
 test.setTimeout(60_000);
