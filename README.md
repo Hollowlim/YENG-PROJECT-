@@ -48,12 +48,13 @@ Product images can be HTTPS URLs or JPEG/PNG/WebP uploads up to 2 MB. Demo uploa
 The site works without Supabase in local demo mode. To use real catalogue storage:
 
 1. Create or choose your Supabase project.
-2. Run `supabase/001_catalog.sql` once in the project's SQL editor. It creates tables, database policies, a transactional product-save function and a public `product-images` bucket. Run this against a new catalogue schema; existing tables/policies require a migration review.
+2. Open **SQL Editor → New query**, paste the entire [supabase/setup.sql](supabase/setup.sql) file and run it as `postgres`. It combines the catalogue, product photography and customer rewards setup. It can be rerun against this project's existing schema without duplicate-table/policy/function errors and preserves stored rows. It refreshes the named application policies, product functions, and public `product-images` bucket settings. Expect `CROWNETIC database setup complete`. The numbered `001`–`003` scripts are historical one-time migrations; use `setup.sql` when setting up or repairing this project, rather than rerunning those scripts individually. An unrelated or differently shaped schema still requires review.
 3. Create an administrator account using Supabase Authentication > Users.
 4. In the SQL editor, add its UUID to the administrator allowlist:
 
    ```sql
-   insert into public.admin_users(user_id) values ('YOUR-AUTH-USER-UUID');
+   insert into public.admin_users(user_id) values ('YOUR-AUTH-USER-UUID')
+   on conflict (user_id) do nothing;
    ```
 
 5. Copy `.env.example` to `.env.local` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` from your project. These are browser-safe public settings. **Never put a service-role key in the frontend.** Restart Vite after changing them.
@@ -123,7 +124,7 @@ The header account icon opens customer login/sign-up, a membership dashboard and
 
 Each product earns **100 points per item by default**, configurable in the admin product editor. Points depend on quantity, not money spent. Tiers are Member below 1,000 points; Bronze at 1,000; Gold at 5,000; Platinum at 10,000. Tiers recognize accumulated points; no redemption, discounts or unstated benefits are implemented. Signed-in demo customers earn clearly labeled demo points after sample checkout. Guests earn no points, and no real points are awarded by the connected sample checkout.
 
-For Supabase, run `003_customer_rewards.sql` after migrations 001 and 002. Customers can update only their own profile and read only their own rewards. Browser roles cannot write reward events or call the award RPC. A trusted server must verify a real paid order before invoking `award_purchase_points`; order references are unique to prevent duplicate awards. Payment/webhook integration and live Supabase verification remain outstanding. No service-role key belongs in the frontend.
+The combined `supabase/setup.sql` installs the customer rewards schema along with the catalogue and photography fields. Existing installations may also have applied the original migrations 001, 002 and 003. Customers can update only their own profile and read only their own rewards. Browser roles cannot write reward events or call the award RPC. A trusted server must verify a real paid order before invoking `award_purchase_points`; order references are unique to prevent duplicate awards. Payment/webhook integration and live Supabase verification remain outstanding. No service-role key belongs in the frontend.
 
 The language selector offers **English, Bahasa Melayu, Chinese and Tamil**, remembers the choice and translates customer account screens and key storefront navigation, controls and checkout labels. Brand copy and product content entered by admin remain in their original language; arbitrary automatic translation is not provided. Language changes preserve form inputs. Admin remains primarily English.
 

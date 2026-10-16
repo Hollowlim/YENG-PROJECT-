@@ -39,13 +39,9 @@ Set **Authentication → URL Configuration → Site URL** to the deployed HTTPS 
 
 ## 3. Connect and build the storefront
 
-Run the existing database migrations in order in the project's SQL editor, if they have not already been applied:
+Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor query as `postgres`. This combined script handles a fresh database or one already using this project's numbered migrations, preserving stored rows while refreshing named policies and functions. It configures the product-images bucket as public. Run the complete file; expect `CROWNETIC database setup complete`. Use this file instead of rerunning the one-time `001`–`003` scripts individually. Review an unrelated or custom schema first.
 
-1. `supabase/001_catalog.sql`
-2. `supabase/002_product_angles.sql`
-3. `supabase/003_customer_rewards.sql`
-
-Review migrations against an existing database before applying them. Do not re-run one-time migrations that already succeeded. Customer email verification itself uses Supabase Auth and requires no new application table.
+Customer email verification itself uses Supabase Auth and requires no additional application table. Database setup does not enable email confirmation or SMTP; configure those Dashboard settings separately.
 
 Copy `.env.example` to the uncommitted `.env.local` file and set these two public browser settings from the same Supabase project:
 
