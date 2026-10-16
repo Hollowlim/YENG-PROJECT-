@@ -60,7 +60,7 @@ This checkout defaults to CROWNETIC’s project through `site-config.js`. A publ
 
 Both settings must be supplied together. Remote failures show errors instead of silently switching to a sample catalogue. Row-level security restricts product management to allowlisted admins. Public readers see only published products and their variants. The storage bucket is public: all uploaded images, including those intended for draft products, are public assets. Do not upload confidential content.
 
-The project URL and public publishable key have been configured. **Live API validation remains blocked by this cloud workspace’s network policy**, which returned proxy `403 Forbidden` for the Supabase host; this is not evidence that the key is invalid. The required hostname was saved to the environment network draft for review/publication. No real signups, verification emails, or database writes were performed during connection checks. Before launch, verify sign-in, nonadmin denial, published/draft visibility, transactional saves and image upload permissions against your actual project.
+The project URL and public publishable key are configured. Live read-only checks on 16 October 2026 reached Supabase successfully: email signup and email confirmation are enabled, the published catalogue query (including product photos, reward points and size/stock relation) returns HTTP 200 with no published items, and anonymous requests to admin memberships, customer profiles and rewards are denied with HTTP 401. No real signups, verification emails, or database writes were performed during these checks. SMTP delivery and signed-in account/admin operations still require live verification. Before launch, verify sign-in, customer isolation, product publishing/saves and image upload permissions against the actual project.
 
 ## Payments and shipping
 
@@ -100,7 +100,7 @@ The original ambient waves now form a fixed, page-wide background on customer ro
 
 Open the Core Heavyweight Tee to view the illustrative model from the **left, front and right**. Use angle buttons, previous/next arrows, keyboard arrow keys or a horizontal swipe/drag. These are three photographs, not a live 3D garment renderer. Products without side photography keep their front image and disable missing angles.
 
-Admin now has optional left/right image URLs and uploads; the existing primary image supplies the front view. Replacing the sample photography switches to those uploaded images. Angle photos persist alongside products in local demo storage. For connected Supabase projects, run `supabase/002_product_angles.sql` after `001_catalog.sql` before saving products with the new editor. Live Supabase verification remains pending network access and real-project checks.
+Admin now has optional left/right image URLs and uploads; the existing primary image supplies the front view. Replacing the sample photography switches to those uploaded images. Angle photos persist alongside products in local demo storage. For connected Supabase projects, run `supabase/002_product_angles.sql` after `001_catalog.sql` before saving products with the new editor. Read-only Supabase connectivity has been checked; authenticated product saves and uploads remain to be verified live.
 
 ## All-item views and reflections
 
