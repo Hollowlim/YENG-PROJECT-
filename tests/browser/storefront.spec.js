@@ -450,6 +450,7 @@ test("page navigation shows metallic monogram and product angle button row is re
 test("customer signup profile per-item demo points and account isolation", async ({
   page,
 }) => {
+  test.setTimeout(60_000); // This journey crosses multiple animated page transitions.
   await page.goto("/#/signup");
   await page.getByLabel("Full name", { exact: true }).fill("Sample Member");
   await page

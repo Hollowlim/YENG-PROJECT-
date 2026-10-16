@@ -1,6 +1,6 @@
 import { mountHeaderLogo, clearHeaderLogo } from "./components/header-logo.jsx";
-import { customers } from "./customer/service.js";
-import { authPage, dashboard, settingsPage } from "./customer/pages.js";
+import { customers, emailAuth } from "./customer/service.js";
+import { authPage, dashboard, settingsPage, verificationPage } from "./customer/pages.js";
 import { languageSelect, translateRoot, setLanguage } from "./customer/i18n.js";
 import { showPageLoader, hidePageLoader } from "./components/page-loader.jsx";
 import {
@@ -137,9 +137,23 @@ function notFound() {
   return `<section class="page empty"><h1 class="page-heading">THIS WAY BACK.</h1><p>We couldn't find that page or product.</p>${link("/shop", "SHOP THE COLLECTION " + arrow, "button")}</section>`;
 }
 let customerUser = null;
+let verificationTimer;
+function mountVerification() {
+  const button = document.querySelector("[data-resend-verification]");
+  if (!button) return;
+  const update = () => {
+    const remaining = emailAuth.remaining();
+    button.disabled = remaining > 0 || button.dataset.sending === "yes";
+    const counter = document.querySelector("[data-resend-countdown]");
+    if (counter) counter.textContent = remaining ? `${remaining}s` : "";
+  };
+  update();
+  verificationTimer = setInterval(update, 1000);
+}
 let renderVersion = 0;
 async function render({ scroll = true } = {}) {
   const version = ++renderVersion;
+  clearInterval(verificationTimer);
   const loader = scroll ? showPageLoader() : null;
   clearHeaderLogo();
   clearProductEffects();
@@ -165,6 +179,7 @@ async function render({ scroll = true } = {}) {
     else if (path === "/bag") content = bagPage();
     else if (path === "/checkout") content = checkoutPage();
     else if (path === "/about") content = about();
+    else if (path === "/verify") content = verificationPage(emailAuth.pending());
     else if (["/account", "/settings", "/login", "/signup"].includes(path)) {
       customerUser = await customers.current();
       if (path === "/signup" || path === "/login")
@@ -182,6 +197,7 @@ async function render({ scroll = true } = {}) {
     if (version !== renderVersion) return;
     app.innerHTML = shell(content);
     mountHeaderLogo();
+    mountVerification();
     if (path === "/") {
       mountScrollEffect();
     }
@@ -198,6 +214,17 @@ async function render({ scroll = true } = {}) {
   } finally {
     if (loader) await hidePageLoader(loader);
   }
+}
+async function signedInDestination() {
+  if (!connected) return "/account";
+  const db = await supabase();
+  const { data: { user }, error } = await db.auth.getUser();
+  if (error) throw error;
+  if (!user) throw Error("Please sign in first.");
+  const { data: membership, error: roleError } = await db
+    .from("admin_users").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (roleError) throw roleError;
+  return membership ? "/admin" : "/account";
 }
 function navigate(path) {
   history.pushState({}, "", path.startsWith("#/") ? path : `#${path}`);
@@ -269,6 +296,27 @@ document.addEventListener("click", async (event) => {
       await catalog.reset();
       render({ scroll: false });
       toast("Demo catalogue reset.");
+    }
+    if (target.hasAttribute("data-resend-verification")) {
+      const form = target.closest("form");
+      const input = form.elements.email;
+      if (!input.reportValidity()) return;
+      target.disabled = true;
+      target.dataset.sending = "yes";
+      const error = form.querySelector(".customer-error");
+      const status = form.querySelector(".customer-saved");
+      error.textContent = "";
+      status.textContent = "";
+      try {
+        await emailAuth.resend(input.value);
+        status.textContent = "If this email has an unconfirmed account, a new code is on its way.";
+      } catch (err) {
+        error.textContent = err.message;
+      } finally {
+        delete target.dataset.sending;
+        target.disabled = emailAuth.remaining() > 0;
+        translateRoot(app);
+      }
     }
     if (target.hasAttribute("data-customer-logout")) {
       await customers.logout();
@@ -399,6 +447,23 @@ document.addEventListener("submit", async (event) => {
       button.disabled = false;
     }
   }
+  if (form.id === "customer-verify") {
+    const button = form.querySelector("[type=submit]");
+    if (button.disabled || !connected) return;
+    button.disabled = true;
+    const error = form.querySelector(".customer-error");
+    error.textContent = "";
+    try {
+      await emailAuth.verify(form.elements.email.value, form.elements.code.value);
+      form.elements.code.value = "";
+      navigate(await signedInDestination());
+    } catch (err) {
+      error.textContent = err.message;
+      translateRoot(app);
+    } finally {
+      button.disabled = false;
+    }
+  }
   if (form.id === "customer-auth" || form.id === "customer-settings") {
     const button = form.querySelector("[type=submit]");
     if (button.disabled) return;
@@ -421,15 +486,8 @@ document.addEventListener("submit", async (event) => {
           email: String(data.get("email")),
           password: String(data.get("password")),
         });
-        if (result.confirmation) {
-          app.innerHTML = shell(
-            authPage(
-              false,
-              "Check your email to confirm your account, then log in.",
-            ),
-          );
-          translateRoot(app);
-        } else navigate("/account");
+        if (result.confirmation) navigate("/verify");
+        else navigate("/account");
       } else {
         const email = String(data.get("email")).trim();
         const password = String(data.get("password"));
@@ -440,19 +498,12 @@ document.addEventListener("submit", async (event) => {
           sessionStorage.setItem("crownetic.demo.admin", "yes");
           navigate("/admin");
         } else {
-          await customers.login(email, password);
-          let isAdmin = false;
-          if (connected) {
-            const db = await supabase();
-            const { data: membership, error: roleError } = await db
-              .from("admin_users")
-              .select("user_id")
-              .eq("user_id", (await db.auth.getUser()).data.user.id)
-              .maybeSingle();
-            if (roleError) throw roleError;
-            isAdmin = Boolean(membership);
+          const result = await customers.login(email, password);
+          if (result?.confirmation) {
+            navigate("/verify");
+            return;
           }
-          navigate(isAdmin ? "/admin" : "/account");
+          navigate(await signedInDestination());
         }
       }
     } catch (err) {

@@ -1,5 +1,7 @@
 import { connected, supabase } from "../catalog.js";
+import { createEmailAuth } from "./email-auth.js";
 import { hashPassword, verifyPassword, itemPoints } from "./model.js";
+export const emailAuth = createEmailAuth({ getClient: supabase, storage: sessionStorage });
 const key = "crownetic.customers.v1",
   session = "crownetic.customer.session";
 function load() {
@@ -26,6 +28,10 @@ export const customers = {
       } = await db.auth.getUser();
       if (error && error.name !== "AuthSessionMissingError") throw error;
       if (!user) return null;
+      if (!user.email_confirmed_at) {
+        await db.auth.signOut();
+        return null;
+      }
       const { data, error: profileError } = await db
         .from("customer_profiles")
         .select("*")
@@ -53,16 +59,7 @@ export const customers = {
       throw Error("Enter your name and a valid email.");
     if (password.length < 8)
       throw Error("Use at least 8 characters for your password.");
-    if (connected) {
-      const db = await supabase();
-      const { data, error } = await db.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
-      });
-      if (error) throw error;
-      return { confirmation: !data.session };
-    }
+    if (connected) return emailAuth.signup({ name, email, password });
     const data = load();
     if (data.users.some((u) => u.email === email))
       throw Error("An account with this email already exists.");
@@ -82,12 +79,7 @@ export const customers = {
   },
   async login(email, password) {
     email = email.trim().toLowerCase();
-    if (connected) {
-      const db = await supabase();
-      const { error } = await db.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      return;
-    }
+    if (connected) return emailAuth.login(email, password);
     const user = load().users.find((u) => u.email === email);
     if (!user || !(await verifyPassword(password, user.password)))
       throw Error("Email or password is incorrect.");

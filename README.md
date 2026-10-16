@@ -6,7 +6,7 @@ A working premium streetwear sample for Malaysia, with MYR prices and an ivory e
 
 1. Download this repository as a ZIP from GitHub and **extract the entire folder**.
 2. Double-click **`index.html`**. Open it in Chrome, Edge or Firefox.
-3. Browse the user storefront. Click **Studio / Admin** in the footer for the admin page.
+3. Browse the user storefront. Click **Account** for customer or administrator login.
 4. Sign in with username **`admin@123`** and password **`admin@123`**.
 5. Add an item, choose stock, check Published and save. Go to Shop All to see it.
 
@@ -128,3 +128,11 @@ For Supabase, run `003_customer_rewards.sql` after migrations 001 and 002. Custo
 The language selector offers **English, Bahasa Melayu, Chinese and Tamil**, remembers the choice and translates customer account screens and key storefront navigation, controls and checkout labels. Brand copy and product content entered by admin remain in their original language; arbitrary automatic translation is not provided. Language changes preserve form inputs. Admin remains primarily English.
 
 Admin access: click Account and use the shared login form. In the sample, use `admin@123` / `admin@123`; connected accounts are routed by their Supabase `admin_users` membership. The public Studio / Admin footer link has been removed. Customer signup remains customer-only.
+
+## Customer email verification with Resend
+
+The connected signup flow requires email confirmation, shows a numeric-code entry screen at `#/verify`, and supports resending with a 60-second browser cooldown. Supabase validates codes, expiry and sending limits. Unconfirmed password logins return to verification; confirmed customers keep normal email/password login. This is signup email ownership verification, not an extra email code on every login. Resend delivers through Supabase custom SMTP, so no Resend API key or SDK is bundled in the website.
+
+Follow [the Resend/Supabase setup guide](docs/email-verification.md) to enable **Confirm email**, configure custom SMTP, and install [the CROWNETIC confirmation email](supabase/templates/confirmation.html) using `{{ .Token }}`. A signup response that grants a session before code confirmation is rejected and signed out as a misconfiguration safeguard. The server-side **Confirm email** setting remains essential. The browser remembers only the pending email and resend time, never the password or verification code.
+
+The local sample remains browser-only and sends no emails. Automated verification uses mocked Supabase responses; real delivery and hosted Auth settings cannot be validated until the project and verified sender are connected. Rotate any API key shared in chat; put the replacement only in the secure Supabase SMTP password field.

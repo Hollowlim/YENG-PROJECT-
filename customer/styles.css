@@ -242,3 +242,9 @@
     margin-left: auto;
   }
 }
+
+.verification-help { color: #bbbcb1; font-size: 13px; line-height: 1.7; }
+.verification-code { font-size: 24px; letter-spacing: .3em; }
+.verification-resend { margin-top: 22px; }
+.verification-cooldown { margin-left: 12px; font-size: 12px; color: #bbbcb1; }
+.verification-link { display: inline-block; margin-top: 20px; }

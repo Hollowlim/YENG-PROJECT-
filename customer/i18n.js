@@ -11,6 +11,24 @@ let locale = Object.hasOwn(
   ? localStorage.getItem("crownetic.language")
   : "en";
 const copy = {
+  "Email address or username": ["Alamat e-mel atau nama pengguna", "邮箱或用户名", "மின்னஞ்சல் முகவரி அல்லது பயனர்பெயர்"],
+  "Verify your email with a code before signing in.": ["Sahkan e-mel anda dengan kod sebelum log masuk.", "登录前请使用验证码验证邮箱。", "உள்நுழையும் முன் குறியீடு மூலம் மின்னஞ்சலை உறுதிசெய்யவும்."],
+  "VERIFY YOUR EMAIL.": ["SAHKAN E-MEL ANDA.", "验证你的邮箱。", "மின்னஞ்சலை உறுதிசெய்யவும்."],
+  "Enter the code from your CROWNETIC email.": ["Masukkan kod daripada e-mel CROWNETIC anda.", "输入 CROWNETIC 邮件中的验证码。", "CROWNETIC மின்னஞ்சலில் உள்ள குறியீட்டை உள்ளிடவும்."],
+  "If you need a new code, enter your email and choose resend. Check your spam folder too.": ["Untuk kod baharu, masukkan e-mel dan pilih hantar semula. Semak juga folder spam.", "需要新验证码时，请输入邮箱并选择重新发送。也请检查垃圾邮件。", "புதிய குறியீட்டிற்கு மின்னஞ்சலை உள்ளிட்டு மீண்டும் அனுப்பவும். ஸ்பேம் கோப்புறையையும் பார்க்கவும்."],
+  "Verification code": ["Kod pengesahan", "验证码", "உறுதிப்படுத்தல் குறியீடு"],
+  "Use the latest code. Never share it with anyone.": ["Gunakan kod terkini. Jangan kongsi dengan sesiapa.", "请使用最新验证码，切勿与他人分享。", "சமீபத்திய குறியீட்டைப் பயன்படுத்தவும். யாருடனும் பகிர வேண்டாம்."],
+  "VERIFY EMAIL": ["SAHKAN E-MEL", "验证邮箱", "மின்னஞ்சலை உறுதிசெய்"],
+  "RESEND CODE": ["HANTAR SEMULA KOD", "重新发送验证码", "குறியீட்டை மீண்டும் அனுப்பு"],
+  "Back to login": ["Kembali ke log masuk", "返回登录", "உள்நுழைவுக்குத் திரும்பு"],
+  "Confirm your email": ["Sahkan e-mel anda", "验证邮箱", "மின்னஞ்சலை உறுதிசெய்யவும்"],
+  "If this email has an unconfirmed account, a new code is on its way.": ["Jika akaun e-mel ini belum disahkan, kod baharu akan dihantar.", "如果此邮箱有尚未验证的账户，新验证码将会发送。", "இந்த மின்னஞ்சலில் உறுதிசெய்யப்படாத கணக்கு இருந்தால் புதிய குறியீடு அனுப்பப்படும்."],
+  "Enter a valid email address.": ["Masukkan alamat e-mel yang sah.", "请输入有效的邮箱地址。", "சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்."],
+  "Enter the verification code from your email.": ["Masukkan kod pengesahan daripada e-mel anda.", "请输入邮件中的验证码。", "மின்னஞ்சலில் உள்ள உறுதிப்படுத்தல் குறியீட்டை உள்ளிடவும்."],
+  "Please wait before requesting another code.": ["Sila tunggu sebelum meminta kod lain.", "请稍后再请求验证码。", "மற்றொரு குறியீட்டைக் கோரும் முன் காத்திருக்கவும்."],
+  "Verification did not complete. Please request a new code.": ["Pengesahan tidak selesai. Sila minta kod baharu.", "验证未完成，请请求新验证码。", "உறுதிப்படுத்தல் முடியவில்லை. புதிய குறியீட்டைக் கோரவும்."],
+  "Email verification is not connected in this sample. No email has been sent.": ["Pengesahan e-mel belum disambungkan dalam sampel ini. Tiada e-mel dihantar.", "此示例尚未连接邮箱验证服务，未发送任何邮件。", "இந்த மாதிரியில் மின்னஞ்சல் உறுதிப்படுத்தல் இணைக்கப்படவில்லை. மின்னஞ்சல் அனுப்பப்படவில்லை."],
+
   BAG: ["BEG", "购物袋", "பை"],
   "points per item": [
     "mata setiap item",
