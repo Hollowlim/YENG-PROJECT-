@@ -1,0 +1,74 @@
+.invoice-page { max-width: 1500px; }
+.invoice-page-heading { align-items: center; margin-bottom: 30px; }
+.invoice-page-heading .page-heading { margin-bottom: 15px; }
+.invoice-page-heading p { color: #b6bcb3; }
+.invoice-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, .42fr); gap: 28px; align-items: start; }
+.invoice-document { border-radius: 18px; overflow: hidden; background: #f3f2eb; color: #171b17; box-shadow: 0 20px 70px #0005; min-width: 0; }
+.invoice-paper-heading { position: relative; padding: 35px; background: #171c18; color: #f0f0e6; border-bottom: 1px solid #b6b59b; }
+.invoice-wordmark { display: inline-block; font-size: 17px; letter-spacing: .26em; margin: 0 0 35px; }
+.invoice-sample-badge { float: right; border: 1px solid #7b816a; color: #d6d9b8; font-size: 9px; letter-spacing: .12em; padding: 6px 10px; border-radius: 5px; }
+.invoice-paper-heading h2 { font-family: var(--display); font-size: clamp(32px, 4vw, 54px); letter-spacing: .02em; margin: 0; }
+.invoice-paper-heading p { margin: 12px 0 0; font-size: 10px; letter-spacing: .1em; line-height: 1.6; color: #d0d5c2; }
+.invoice-paper-body { padding: 35px; }
+.invoice-identifiers { display: grid; gap: 18px; margin-bottom: 30px; }
+.invoice-identifiers > div { display: grid; gap: 7px; font-size: 12px; }
+.invoice-identifiers strong { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+.invoice-label { display: block; color: #666d61; font-size: 9px; letter-spacing: .12em; font-weight: 600; }
+.invoice-billing { display: grid; gap: 7px; font-size: 12px; line-height: 1.5; margin-bottom: 30px; overflow-wrap: anywhere; }
+.invoice-billing .invoice-label { margin-bottom: 4px; }
+.invoice-address { white-space: pre-line; }
+.invoice-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.invoice-table th { text-align: left; font-size: 9px; letter-spacing: .12em; padding: 15px 0; border-bottom: 1px solid #aeb5a4; color: #626c59; }
+.invoice-table th:last-child,.invoice-table td:last-child { text-align: right; width: 33%; }
+.invoice-table td { padding: 20px 0; vertical-align: top; border-bottom: 1px solid #d5d9ca; overflow-wrap: anywhere; }
+.invoice-table td:first-child { padding-right: 15px; }
+.invoice-table td > span { display: block; color: #5f6858; margin-top: 6px; font-size: 11px; }
+.invoice-totals { margin: 25px 0 0 auto; max-width: 350px; font-size: 12px; }
+.invoice-totals > div { display: flex; justify-content: space-between; align-items: baseline; gap: 15px; padding: 9px 0; }
+.invoice-totals dd { margin: 0; text-align: right; }
+.invoice-totals .invoice-grand-total { border-top: 1px solid #acb39f; margin-top: 12px; padding: 20px 0; font-size: 18px; font-weight: 600; }
+.invoice-grand-total small { font-size: 10px; font-weight: 400; }
+.invoice-paper-note { border-top: 1px solid #d5d9ca; padding-top: 24px; margin: 12px 0 22px; font-size: 11px; color: #5f6858; line-height: 1.8; }
+.invoice-paper-footer { font-size: 9px; color: #6b735f; line-height: 1.6; }
+.invoice-actions { min-width: 0; display: grid; gap: 16px; }
+.invoice-email-status { padding: 22px; border: 1px solid #414d40; border-radius: 13px; background: #141b15; }
+.invoice-email-status .small-label { color: #b9c6aa; }
+.invoice-email-status p { font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
+.invoice-email-status .invoice-email-error { color: #efc3ae; font-size: 12px; }
+.invoice-action-note { font-size: 11px; color: #b4bbae; line-height: 1.7; margin: 0; }
+.invoice-email-preview { border: 1px solid #3b4238; border-radius: 12px; overflow: hidden; }
+.invoice-email-preview summary { padding: 18px; font-size: 10px; letter-spacing: .08em; cursor: pointer; }
+.invoice-email-preview iframe { display: block; width: 100%; height: 640px; border: 0; background: #f3f2eb; }
+.invoice-actions > .text-link { justify-self: start; margin-top: 15px; }
+.sample-invoice-history { margin-top: 50px; }
+.sample-invoice-history h2 { font-family: var(--display); font-size: 30px; margin: 12px 0; }
+.sample-invoice-history p { font-size: 12px; color: #b7bfb0; line-height: 1.7; }
+.sample-invoice-list { border: 1px solid #3b4238; border-radius: 14px; overflow: hidden; }
+.sample-invoice-list > article { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 25px; border-bottom: 1px solid #30352d; }
+.sample-invoice-list > article:last-child { border-bottom: 0; }
+.sample-invoice-list > article > div { min-width: 0; }
+.sample-invoice-list > article strong { font-size: 12px; overflow-wrap: anywhere; }
+.sample-invoice-list > article > a { grid-column: 1/-1; font-size: 11px; overflow-wrap: anywhere; justify-self: start; }
+.checkout-email-note { font-size: 12px; color: #c2c8b8; line-height: 1.8; margin-bottom: 24px; }
+@media (max-width: 800px) {
+  .invoice-layout { grid-template-columns: minmax(0, 1fr); }
+  .invoice-page-heading { align-items: flex-start; flex-direction: column; }
+}
+@media (max-width: 480px) {
+  .invoice-paper-heading,.invoice-paper-body { padding: 24px 20px; }
+  .invoice-wordmark { font-size: 13px; letter-spacing: .2em; }
+  .invoice-sample-badge { font-size: 8px; padding: 5px 7px; }
+  .invoice-table { font-size: 11px; }
+  .invoice-table td > span { font-size: 10px; }
+  .invoice-totals .invoice-grand-total { font-size: 16px; }
+  .sample-invoice-list > article { padding: 20px; }
+}
+@media print {
+  body { background: #fff !important; color: #171b17 !important; }
+  body::before,body::after,.ambient-waves,.announcement,.masthead,#app > .footer,.skip-link,#page-loader,#toast,.invoice-page-heading,.invoice-actions { display: none !important; }
+  #app,#main,.invoice-page,.invoice-layout { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; display: block; }
+  .invoice-document { box-shadow: none; border: 1px solid #aaa; border-radius: 0; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .invoice-paper-heading { padding: 24px 30px; }
+  .invoice-paper-body { padding: 24px 30px; }
+  .invoice-table tr { break-inside: avoid; }
+}

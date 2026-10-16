@@ -134,10 +134,10 @@ export const customers = {
       .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
       .map(({ request_id, request_payload, ...order }) => order);
   },
-  async awardDemo(lines, products, reference) {
+  async awardDemo(lines, products, reference, expectedUserId) {
     if (connected) return 0;
     const user = await this.current();
-    if (!user) return 0;
+    if (!user || (expectedUserId && user.id !== expectedUserId)) return 0;
     const data = load();
     if (data.events.some((e) => e.event_ref === reference)) return 0;
     const points = itemPoints(lines, products);

@@ -2,6 +2,8 @@ import { adminStore } from "./admin/service.js";
 import { adminShell, renderAdminPortal, adminSetupPage } from "./admin/pages.js";
 import { mountAdminPortal } from "./admin/portal.js";
 import { mountAdminNavigation, clearAdminNavigation, getAdminNavigationHost } from "./admin/navigation.jsx";
+import { checkoutStore, consumeInvoiceBag } from "./checkout/service.js";
+import { invoicePage, checkoutPage as renderSampleCheckout } from "./checkout/pages.js";
 import "./admin/styles.css";
 import { mountHeaderLogo, clearHeaderLogo } from "./components/header-logo.jsx";
 import { customers, emailAuth, usesEmailCode } from "./customer/service.js";
@@ -53,6 +55,11 @@ let bag = restore(localStorage.getItem("crownetic.bag.v1"), []).filter(
     Number.isSafeInteger(l.quantity) &&
     l.quantity > 0,
 );
+let completedSampleRequests = new Set();
+try {
+  const saved = JSON.parse(localStorage.getItem("crownetic.bag.v1") || "null");
+  if (Array.isArray(saved?.completed_sample_requests)) completedSampleRequests = new Set(saved.completed_sample_requests.filter(value => typeof value === "string"));
+} catch { /* Corrupt bag storage uses the existing empty-bag recovery. */ }
 const arrow =
   '<span aria-hidden="true" class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 12h17M14 6l6 6-6 6"/></svg></span>';
 const bagIcon =
@@ -69,7 +76,7 @@ function toast(message) {
 function persistBag() {
   localStorage.setItem(
     "crownetic.bag.v1",
-    JSON.stringify({ version: 1, data: bag }),
+    JSON.stringify({ version: 1, data: bag, completed_sample_requests: [...completedSampleRequests] }),
   );
 }
 function shell(content) {
@@ -105,9 +112,9 @@ function summary(checkout = false) {
   const errors = bagErrors(bag, products);
   return `<aside class="summary"><h2>THE DETAILS.</h2><div class="summary-row"><span>Subtotal</span><span>${money(subtotal(bag, products))}</span></div><div class="summary-row"><span>Sample shipping</span><span>RM 0.00</span></div><div class="summary-row summary-total"><strong>Total</strong><strong>${money(subtotal(bag, products))}</strong></div>${errors.length ? `<p class="error">${errors.map(e).join("<br>")}</p>` : ""}${checkout ? `<button class="button" data-checkout ${errors.length ? "disabled" : ""}>SAMPLE CHECKOUT ${arrow}</button>` : ""}<p>Demo only. No payment will be collected. Shipping is illustrative; no items will be dispatched.</p></aside>`;
 }
-function checkoutPage() {
-  if (!bag.length) return bagPage();
-  return `<section class="page"><span class="small-label">THE FINAL STEP / SIMULATED CHECKOUT</span><h1 class="page-heading">MAKE IT YOURS.</h1><div class="notice">This is a sample checkout. Use fictional details. No card information, real payment, or delivery is involved.</div><div class="bag-layout"><form id="checkout-form"><div class="form-grid"><div class="field"><label for="first">First name</label><input id="first" required value="Sample" autocomplete="off"></div><div class="field"><label for="last">Last name</label><input id="last" required value="Customer" autocomplete="off"></div><div class="field full"><label for="email">Example email</label><input id="email" type="email" value="sample@example.com" required autocomplete="off"></div><div class="field full"><label for="address">Example delivery address</label><input id="address" value="123 Sample Street, Kuala Lumpur" required autocomplete="off"></div><div class="field"><label for="postcode">Example postcode</label><input id="postcode" value="50000" pattern="[0-9]{5}" required></div><div class="field"><label for="country">Country</label><input id="country" value="Malaysia" readonly></div></div><p id="checkout-error" role="alert" class="error"></p><button class="button" type="submit">COMPLETE SAMPLE ORDER ${arrow}</button><p class="small-label" style="margin-top:20px">SIMULATION ONLY — NOT A REAL PURCHASE</p></form>${summary()}</div></section>`;
+function checkoutPage(user, pending) {
+  if (!bag.length && !pending) return bagPage();
+  return renderSampleCheckout({ user, connected, pending, orderSummary: summary() });
 }
 function about() {
   return `<section class="page"><div class="about"><span class="small-label">INDEPENDENT BY NATURE / KUALA LUMPUR</span><h1 class="page-heading">SAME CITY.<br>DIFFERENT PERSPECTIVE.</h1><img src="/assets/campaign.png" alt="CROWNNETIC campaign in concrete architecture"><p>Some follow the current. Others find their own way.</p><p>CROWNNETIC is a streetwear brand from Kuala Lumpur, made for a generation that doesn't need permission to stand apart.</p><p>Considered silhouettes. A quieter palette. Everyday pieces with a presence of their own. This is the first chapter.</p>${link("/shop", "DISCOVER COLLECTION 001 " + arrow, "button")}</div></section>`;
@@ -212,20 +219,27 @@ async function render({ scroll = true, preserveAdminNavigation = false } = {}) {
     else if (path === "/shop") content = shop();
     else if (path.startsWith("/product/")) content = productPage(path.slice(9));
     else if (path === "/bag") content = bagPage();
-    else if (path === "/checkout") content = checkoutPage();
+    else if (path === "/checkout") {
+      customerUser = await customers.current();
+      content = checkoutPage(customerUser, connected && !customerUser ? null : await checkoutStore.pending());
+    }
+    else if (path.startsWith("/invoice/")) {
+      customerUser = await customers.current();
+      content = invoicePage(connected && !customerUser ? null : await checkoutStore.get(path.slice(9)));
+    }
     else if (path === "/about") content = about();
     else if (path === "/verify") content = verificationPage(emailAuth.pending());
     else if (["/account", "/settings", "/login", "/signup"].includes(path)) {
       customerUser = await customers.current();
       if (path === "/signup" || path === "/login")
         content = customerUser
-          ? dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders()]))
+          ? dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders(), checkoutStore.list()]))
           : authPage(path === "/signup", "", path === "/login" ? emailAuth.pending()?.email : "");
       else
         content = customerUser
           ? path === "/settings"
             ? settingsPage(customerUser)
-            : dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders()]))
+            : dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders(), checkoutStore.list()]))
           : authPage(false, "", emailAuth.pending()?.email);
     } else if (path === "/admin") {
       const result = await adminPage();
@@ -287,6 +301,19 @@ function navigate(path, options) {
 window.addEventListener("popstate", () => render());
 window.addEventListener("hashchange", () => render());
 document.addEventListener("click", async (event) => {
+  const invoiceAction = event.target.closest("[data-print-invoice], [data-send-invoice]");
+  if (invoiceAction?.hasAttribute("data-print-invoice")) window.print();
+  if (invoiceAction?.hasAttribute("data-send-invoice")) {
+    if (invoiceAction.disabled) return;
+    invoiceAction.disabled = true;
+    try {
+      const order = await checkoutStore.resend(invoiceAction.dataset.sendInvoice);
+      await render({ scroll: false });
+      toast(order.email_status === "accepted" ? "Invoice email accepted for delivery." : order.email_error || "Your invoice is saved. Please check again in a minute.");
+    } catch (error) { toast(error.message); }
+    finally { invoiceAction.disabled = false; }
+    return;
+  }
   const anchor = event.target.closest("a[data-link]");
   if (
     anchor &&
@@ -472,30 +499,39 @@ document.addEventListener("submit", async (event) => {
     if (button.disabled) return;
     button.disabled = true;
     try {
-      const fresh = await catalog.list();
-      const errors = bagErrors(bag, fresh);
-      if (errors.length) throw Error(errors.join(" "));
-      if (subtotal(bag, fresh) !== subtotal(bag, products)) {
-        products = fresh;
-        await render({ scroll: false });
-        throw Error(
-          "Prices changed. Review your updated total before trying again.",
-        );
+      document.querySelector("#checkout-error").textContent = "";
+      const outcome = form.querySelector("#sample-payment-result").value;
+      if (outcome !== "success") throw Error(`The sample payment was ${outcome}. Your bag is unchanged. No invoice or email was created.`);
+      const submittedBag = structuredClone(bag);
+      const rewardProducts = structuredClone(products);
+      const order = await checkoutStore.complete({
+        outcome,
+        items: submittedBag.map(line => ({ product_id: line.productId, size: line.size, quantity: line.quantity })),
+        expected_total_sen: subtotal(submittedBag, rewardProducts),
+        customer: {
+          name: `${form.querySelector("#first").value.trim()} ${form.querySelector("#last").value.trim()}`,
+          email: form.querySelector("#email").value,
+          address: form.querySelector("#address").value,
+          postcode: form.querySelector("#postcode").value,
+          country: form.querySelector("#country").value,
+        },
+      });
+      if (!connected) {
+        try {
+          await customers.awardDemo(order.items.map(item => ({ productId: item.product_id, size: item.size, quantity: item.quantity })), rewardProducts, order.reference, order.user_id);
+        } catch { /* A saved sample invoice remains available if demo reward storage fails. */ }
       }
-      form.dataset.purchaseRef ||= `DEMO-${crypto.randomUUID()}`;
-      const earned = await customers.awardDemo(
-        bag,
-        fresh,
-        form.dataset.purchaseRef,
-      );
-      bag = [];
-      persistBag();
-      app.innerHTML = shell(
-        `<section class="page success"><div class="success-symbol">✓</div><span class="small-label">SIMULATION COMPLETE</span><h1>GOOD TASTE.<br>GREAT CHOICE.</h1><p>Your sample checkout is complete.<br>No payment was taken and no real order was placed.</p>${earned ? `<p><strong>+${earned}</strong> <span>demo points added to your account.</span></p>${link("/account", "View your dashboard", "text-link")}` : connected ? "<p>Sample checkout does not award real points.</p>" : `<p>${link("/account", "Sign in to earn points on your next purchase.", "text-link")}</p>`}${link("/shop", "BACK TO THE COLLECTION " + arrow, "button")}</section>`,
-      );
-      translateRoot(app);
-      window.scrollTo(0, 0);
+      if (!completedSampleRequests.has(order.request_id)) {
+        const previousBag = bag;
+        bag = consumeInvoiceBag(bag, order.items);
+        completedSampleRequests.add(order.request_id);
+        try { persistBag(); }
+        catch (error) { bag = previousBag; completedSampleRequests.delete(order.request_id); throw error; }
+      }
+      await checkoutStore.acknowledge(order);
+      navigate(`/invoice/${order.id}`);
     } catch (error) {
+      if (form.isConnected) await render({ scroll: false });
       const el = document.querySelector("#checkout-error");
       if (el) el.textContent = error.message;
       else toast(error.message);
