@@ -39,7 +39,7 @@ Set **Authentication → URL Configuration → Site URL** to the deployed HTTPS 
 
 ## 3. Connect and build the storefront
 
-Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor query as `postgres`. This combined script handles a fresh database or one already using this project's numbered migrations, preserving stored rows while refreshing named policies and functions. It configures the product-images bucket as public. Run the complete file; expect `CROWNETIC database setup complete`. Use this file instead of rerunning the one-time `001`–`003` scripts individually. Review an unrelated or custom schema first.
+Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor query as `postgres`. This combined script handles a fresh database or one already using this project's numbered migrations, preserving stored rows while refreshing named policies and functions. It configures the product-images bucket as public. Run the complete file; expect `CROWNETIC database setup complete`. The latest numbered `001`–`003` files also support reruns, in order; older copies do not. The combined file remains the simplest setup route. Review an unrelated or custom schema first.
 
 Customer email verification itself uses Supabase Auth and requires no additional application table. Database setup does not enable email confirmation or SMTP; configure those Dashboard settings separately.
 
