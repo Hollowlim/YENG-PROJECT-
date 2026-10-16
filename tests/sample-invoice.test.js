@@ -52,18 +52,58 @@ test("sample invoice freezes authoritative catalogue prices and verified email w
   assert.equal(order.email_attempted_at, null);
   assert.equal(order.email_accepted_at, null);
   assert.deepEqual(order.request_payload, normalizeCheckout(input()));
-  assert.deepEqual(order.items, [{ product_id: "tee", name: "Heavyweight Tee", size: "M", quantity: 2, unit_price_sen: 18900 }]);
+  assert.deepEqual(order.items, [{ product_id: "tee", name: "Heavyweight Tee", size: "M", quantity: 2, unit_price_sen: 18900, reward_points: 100 }]);
   assert.equal(JSON.stringify(catalogue), before);
   catalogue[0].price_sen = 1;
   catalogue[0].name = "Changed later";
+  catalogue[0].reward_points = 999;
   customer.address = "Temporary changed address";
   try {
     assert.equal(order.items[0].unit_price_sen, 18900);
     assert.equal(order.items[0].name, "Heavyweight Tee");
+    assert.equal(order.items[0].reward_points, 100);
+    assert.equal(order.points, 200);
     assert.equal(order.billing_address, "123 Example Street");
     assert.equal(order.request_payload.customer.address, "123 Example Street");
   } finally { customer.address = "123 Example Street"; }
-  assert.equal("points" in order, false);
+  assert.equal(order.points, 200);
+});
+
+test("sample points use quantities and authoritative per-product overrides including zero", () => {
+  const order = invoice({
+    lines: [{ product_id: "tee", size: "M", quantity: 2 }, { product_id: "cap", size: "ONE SIZE", quantity: 1 }],
+    products: [products[0], { ...products[1], reward_points: 35 }],
+    expectedTotal: 46700,
+  });
+  assert.equal(order.points, 235);
+  assert.equal(order.items.find((item) => item.product_id === "tee").reward_points, 100);
+  assert.equal(order.items.find((item) => item.product_id === "cap").reward_points, 35);
+  assert.equal(invoice({ products: [{ ...products[0], reward_points: 0 }] }).points, 0);
+  assert.equal(invoice({ products: [{ ...products[0], price_sen: 1, reward_points: 100000 }], expectedTotal: 2 }).points, 200000);
+});
+
+test("catalogue reward points reject negative, fractional, excessive and unsafe values", () => {
+  for (const reward_points of [-1, 0.5, 100001, 2147483648, Number.MAX_SAFE_INTEGER, NaN, Infinity, "100"]) {
+    assert.throws(() => invoice({ products: [{ ...products[0], reward_points }] }), /points/i);
+  }
+});
+
+test("the largest allowed sample basket has a safe database integer points total", () => {
+  const catalogue = Array.from({ length: 100 }, (_, index) => ({ id: `product-${index}`, name: `Product ${index}`, published: true, price_sen: 0, reward_points: 100000, variants: [{ size: "M", stock: 99 }] }));
+  const order = invoice({ products: catalogue, lines: catalogue.map((product) => ({ product_id: product.id, size: "M", quantity: 99 })), expectedTotal: 0 });
+  assert.equal(order.points, 990000000);
+  assert.equal(Number.isSafeInteger(order.points), true);
+  assert.ok(order.points <= 2147483647);
+});
+
+test("browser-injected points never change the canonical request or invoice reward snapshot", () => {
+  const supplied = input({ points: 9999999, reward_points: 9999999, items: [{ product_id: "tee", size: "M", quantity: 2, reward_points: 9999999, points: 9999999 }] });
+  const canonical = normalizeCheckout(supplied);
+  assert.deepEqual(canonical, normalizeCheckout(input()));
+  const order = invoice({ lines: supplied.items, products: [{ ...products[0], reward_points: 37 }] });
+  assert.equal(order.points, 74);
+  assert.equal(order.items[0].reward_points, 37);
+  assert.equal("points" in order.request_payload, false);
 });
 
 test("invoice refuses unpublished, missing and unavailable catalogue sizes using aggregate quantities", () => {
@@ -88,10 +128,25 @@ test("invoice email escapes customer/product/reference data and clearly disclaim
   assert.match(email.html, /NOT A TAX INVOICE/);
   assert.match(email.text, /NO PAYMENT COLLECTED/);
   assert.match(email.text, /NOT A TAX INVOICE/);
+  assert.match(email.html, /SAMPLE POINTS/);
+  assert.match(email.text, /SAMPLE POINTS EARNED: 200/);
   assert.ok(email.html.includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
   assert.ok(!email.html.includes("<script>"));
   assert.ok(!email.html.includes('<img src=x onerror="alert(1)">'));
   assert.match(email.html, /378\.00/);
   assert.match(email.text, /378\.00/);
   assert.ok(!email.html.includes("payment successful"));
+});
+
+test("legacy invoices without a points snapshot show zero sample points rather than deriving current rewards", () => {
+  const legacy = invoice();
+  delete legacy.points;
+  legacy.items[0].reward_points = 100000;
+  const email = renderInvoiceEmail(legacy);
+  assert.match(email.text, /SAMPLE POINTS EARNED: 0/);
+  assert.ok(!email.text.includes("SAMPLE POINTS EARNED: 200000"));
+  assert.match(email.html, /Sample points are for testing only and have no cash value\./);
+  assert.match(email.text, /Sample points are for testing only and have no cash value\./);
+  assert.throws(() => renderInvoiceEmail({ ...legacy, points: 2147483648 }), /points/i);
+  assert.throws(() => renderInvoiceEmail({ ...legacy, points: '<img src=x onerror="alert(1)">' }), /points/i);
 });

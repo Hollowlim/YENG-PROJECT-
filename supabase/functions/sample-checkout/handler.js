@@ -4,11 +4,13 @@ const MAX_BODY_BYTES = 64 * 1024;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_UNAVAILABLE = "Invoice email is not configured for this sample. Your sample invoice is saved; no email was sent.";
 const EMAIL_RESTRICTED = "Test email can only be sent to the configured verified test recipient. Your sample invoice is saved; no email was sent.";
-const EMAIL_FAILED = "The email provider did not confirm acceptance. Your sample invoice is saved. You can retry its email without creating another invoice.";
+const EMAIL_FAILED = "The email provider rejected this request. Your sample invoice is saved. You can retry its email without creating another invoice.";
+const EMAIL_UNKNOWN = "Email acceptance could not be confirmed. The store needs to review this invoice before another email attempt.";
+const validEmail = (value) => typeof value === "string" && value.length <= 254 && /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value);
 
 function publicOrder(value) {
   if (!value) return value;
-  const { email_claim_id, email_claimed, email_lease_until, ...order } = value;
+  const { email_claim_id, email_claimed, email_lease_until, email_claim_provider, ...order } = value;
   return order;
 }
 
@@ -59,6 +61,8 @@ async function readJson(request) {
 
 export function createSampleCheckoutHandler({ authenticate, getProducts, repository, sendEmail, config, now = () => new Date().toISOString(), uuid = () => crypto.randomUUID() }) {
   const origins = new Set(config.allowedOrigins || []);
+  const provider = String(config.provider || "resend").trim().toLowerCase();
+  const fromEmail = String(config.fromEmail || "").trim();
 
   async function currentOrder(userId, order, fallback = order) {
     try { return await repository.getById(userId, order.id) || fallback; }
@@ -66,12 +70,17 @@ export function createSampleCheckoutHandler({ authenticate, getProducts, reposit
   }
 
   async function deliverInvoice(order, user) {
-    if (order.email_status === "accepted") return order;
+    if (["accepted", "review"].includes(order.email_status) || order.email_retry_blocked) return order;
     const recipient = String(user.email || "").trim().toLowerCase();
     const allowedRecipient = String(config.testRecipient || "").trim().toLowerCase();
-    if (!config.resendConfigured || !/^\S+@\S+\.\S+$/.test(allowedRecipient)) return repository.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
-    if (recipient !== allowedRecipient || String(order.customer_email).toLowerCase() !== recipient) return repository.setEmailUnavailable(order.id, "restricted", EMAIL_RESTRICTED);
-    const claimed = await repository.claimEmail(order.id);
+    if (String(order.customer_email).toLowerCase() !== recipient) return repository.setEmailUnavailable(order.id, "restricted", "The invoice email does not match your current verified account email. No email was sent.");
+    if (provider === "sendgrid") {
+      if (!config.sendgridConfigured || !validEmail(fromEmail)) return repository.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+    } else if (provider === "resend") {
+      if (!config.resendConfigured || !validEmail(allowedRecipient)) return repository.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+      if (recipient !== allowedRecipient) return repository.setEmailUnavailable(order.id, "restricted", EMAIL_RESTRICTED);
+    } else return repository.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+    const claimed = provider === "sendgrid" ? await repository.claimEmailOnce(order.id) : await repository.claimEmail(order.id);
     if (!claimed.email_claimed || !claimed.email_claim_id) return publicOrder(claimed);
     // Render the persisted invoice returned by the claim, never the browser's
     // content or the unpersisted catalogue preview used to propose the order.
@@ -79,17 +88,25 @@ export function createSampleCheckoutHandler({ authenticate, getProducts, reposit
     let accepted;
     try {
       accepted = await sendEmail({
-        from: "CROWNNETIC Sample <onboarding@resend.dev>",
+        invoiceId: claimed.id,
+        from: provider === "sendgrid" ? fromEmail : "CROWNNETIC Sample <onboarding@resend.dev>",
         to: [recipient],
         ...message,
-        idempotencyKey: `sample-invoice/${claimed.id}/v1`,
+        ...(provider === "resend" ? { idempotencyKey: `sample-invoice/${claimed.id}/v1` } : {}),
       });
-      if (!accepted || typeof accepted.id !== "string" || !accepted.id || accepted.id.length > 200) throw Error("No provider acceptance identifier");
+      if (!accepted || typeof accepted.id !== "string" || !accepted.id || accepted.id.length > 200) throw Object.assign(Error("No provider acceptance identifier"), { deliveryUnknown: true });
     } catch (failure) {
-      const error = failure?.name === "AbortError" || failure?.name === "TimeoutError"
-        ? "The email request timed out before acceptance was confirmed. Your sample invoice is saved. Retry its email after the cooldown."
-        : EMAIL_FAILED;
-      try { return await repository.finishEmail(claimed.id, claimed.email_claim_id, null, error); }
+      if (failure?.deliveryUnknown !== false) {
+        if (provider === "sendgrid") {
+          try { return await repository.markEmailUnknown(claimed.id, claimed.email_claim_id, EMAIL_UNKNOWN); }
+          catch { return currentOrder(user.id, claimed); }
+        }
+        // Resend deduplicates the same key. Keep its saved in-flight state;
+        // the lease may be retried safely through the same provider after the
+        // cooldown, while a switch to SendGrid requires store review.
+        return currentOrder(user.id, claimed);
+      }
+      try { return await repository.finishEmail(claimed.id, claimed.email_claim_id, null, EMAIL_FAILED); }
       catch { return currentOrder(user.id, claimed); }
     }
     // If this write fails after the provider accepted the message, keep the

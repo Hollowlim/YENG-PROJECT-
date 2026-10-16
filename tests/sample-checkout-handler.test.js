@@ -30,14 +30,27 @@ function setup(options = {}) {
     },
     setEmailUnavailable: async (id, status, error) => {
       const order = records.get(id);
-      if (!["accepted", "sending"].includes(order.email_status)) Object.assign(order, { email_status: status, email_error: error });
+      if (!["accepted", "sending", "review"].includes(order.email_status) && !order.email_retry_blocked) Object.assign(order, { email_status: status, email_error: error });
       return copy(order);
     },
     claimEmail: async (id) => {
       const order = records.get(id);
-      if (options.claimBlocked || ["accepted", "sending"].includes(order.email_status)) return { ...copy(order), email_claimed: false, email_claim_id: null };
-      Object.assign(order, { email_status: "sending", email_attempted_at: "2026-10-16T02:01:00.000Z", email_claim_id: claimId });
+      if (options.claimBlocked || ["accepted", "review"].includes(order.email_status) || order.email_retry_blocked || order.email_status === "sending" && !options.resendClaimExpired) return { ...copy(order), email_claimed: false, email_claim_id: null };
+      Object.assign(order, { email_status: "sending", email_attempted_at: "2026-10-16T02:01:00.000Z", email_claim_id: claimId, email_claim_provider: "resend" });
       return { ...copy(order), email_claimed: true, email_claim_id: claimId };
+    },
+    claimEmailOnce: async (id) => {
+      const order = records.get(id);
+      if (order.email_status === "sending" && options.onceClaimExpired) Object.assign(order, { email_status: "review", email_retry_blocked: true, email_error: "Email acceptance needs store review before another attempt." });
+      if (options.claimBlocked || ["accepted", "sending", "review"].includes(order.email_status) || order.email_retry_blocked) return { ...copy(order), email_claimed: false };
+      Object.assign(order, { email_status: "sending", email_attempted_at: "2026-10-16T02:01:00.000Z", email_claim_id: claimId, email_claim_provider: "sendgrid" });
+      return { ...copy(order), email_claimed: true };
+    },
+    markEmailUnknown: async (id, claim, error) => {
+      const order = records.get(id);
+      assert.equal(claim, order.email_claim_id);
+      if (order.email_status !== "accepted") Object.assign(order, { email_status: "review", email_retry_blocked: true, email_error: error });
+      return copy(order);
     },
     finishEmail: async (id, claim, providerId, error) => {
       if (options.finishFails) throw Error("Database temporarily unavailable");
@@ -60,7 +73,8 @@ function setup(options = {}) {
       sends += 1;
       attempts.push(copy(message));
       assert.equal(records.size, 1, "persist the invoice before calling an email provider");
-      if (options.sendFailure) throw Error("Resend secret re_PRIVATE_KEY recipient=private@example.com");
+      if (options.sendUnknown) throw Object.assign(Error("Provider secret PRIVATE_KEY recipient=private@example.com"), { deliveryUnknown: true });
+      if (options.sendFailure) throw Object.assign(Error("Resend secret re_PRIVATE_KEY recipient=private@example.com"), { deliveryUnknown: false });
       deliveries.push(message);
       if (options.beforeSendFinish) await options.beforeSendFinish();
       return { id: "provider-message-id" };
@@ -283,7 +297,7 @@ test("catalogue failure recovery still rejects a request key committed with diff
   assert.equal(concurrent.sends(), 0);
 });
 
-test("retry after an unknown provider result reuses the invoice and provider idempotency key", async () => {
+test("retry after a definitive provider rejection reuses the invoice and provider idempotency key", async () => {
   const options = { sendFailure: true };
   const store = setup(options);
   const first = await store.request();
@@ -316,4 +330,87 @@ test("an email accepted before a database completion failure is not falsely reco
   assert.equal(store.records.get(orderId).email_status, "sending");
   assert.equal(store.sends(), 1);
   assert.ok(!JSON.stringify(result.body).includes("Database temporarily unavailable"));
+});
+
+const sendgridConfig = { provider: "sendgrid", sendgridConfigured: true, fromEmail: "verified-sender@example.com" };
+
+test("SendGrid invoices reach any verified account email and ignore caller-controlled sender or recipients", async () => {
+  const store = setup({ config: sendgridConfig, user: { id: "customer-2", email: "international.customer@example.net", email_confirmed_at: "2026-10-16" } });
+  const result = await store.request(data({ to: "victim@example.com", from: "spoof@example.com", customer_email: "victim@example.com", points: 999999 }));
+  assert.equal(result.response.status, 200);
+  assert.equal(result.body.order.email_status, "accepted");
+  assert.equal(result.body.order.points, 200);
+  assert.deepEqual(store.deliveries[0].to, ["international.customer@example.net"]);
+  assert.equal(store.deliveries[0].from, "verified-sender@example.com");
+  assert.equal(store.deliveries[0].invoiceId, orderId);
+  assert.equal("idempotencyKey" in store.deliveries[0], false);
+  assert.equal(store.records.get(orderId).email_claim_provider, "sendgrid");
+});
+
+test("SendGrid requires its own API key configuration and a valid verified sender address", async () => {
+  for (const config of [{ ...sendgridConfig, sendgridConfigured: false }, { ...sendgridConfig, fromEmail: "" }, { ...sendgridConfig, fromEmail: "Header\r\nBcc: victim@example.com" }]) {
+    const store = setup({ config });
+    const result = await store.request();
+    assert.equal(result.body.order.email_status, "not_configured");
+    assert.equal(store.records.size, 1);
+    assert.equal(store.sends(), 0);
+  }
+});
+
+test("an explicit SendGrid rejection may retry the saved invoice without creating or awarding another order", async () => {
+  const options = { config: sendgridConfig, sendFailure: true };
+  const store = setup(options);
+  const first = await store.request();
+  assert.equal(first.body.order.email_status, "failed");
+  options.sendFailure = false;
+  const retried = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(retried.body.order.email_status, "accepted");
+  assert.equal(retried.body.order.id, first.body.order.id);
+  assert.equal(store.records.size, 1);
+  assert.equal(store.reads(), 1);
+  assert.equal(store.sends(), 2);
+});
+
+test("uncertain SendGrid acceptance requires store review and blocks a second send", async () => {
+  const options = { config: sendgridConfig, sendUnknown: true };
+  const store = setup(options);
+  const first = await store.request();
+  assert.equal(first.body.order.email_status, "review");
+  assert.equal(first.body.order.email_retry_blocked, true);
+  assert.ok(!JSON.stringify(first.body).includes("PRIVATE_KEY"));
+  options.sendUnknown = false;
+  const retry = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(retry.body.order.email_status, "review");
+  assert.equal(store.sends(), 1);
+});
+
+test("SendGrid acceptance followed by a lost database finish cannot trigger a second send", async () => {
+  const options = { config: sendgridConfig, finishFails: true };
+  const store = setup(options);
+  const first = await store.request();
+  assert.equal(first.body.order.email_status, "sending");
+  options.finishFails = false;
+  const liveRetry = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(liveRetry.body.order.email_status, "sending");
+  options.onceClaimExpired = true;
+  const staleRetry = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(staleRetry.body.order.email_status, "review");
+  assert.equal(staleRetry.body.order.email_retry_blocked, true);
+  assert.equal(store.sends(), 1);
+});
+
+test("unknown Resend acceptance remains in-flight and only retries with the same provider idempotency key", async () => {
+  const options = { sendUnknown: true };
+  const store = setup(options);
+  const first = await store.request();
+  assert.equal(first.body.order.email_status, "sending");
+  options.sendUnknown = false;
+  const liveRetry = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(liveRetry.body.order.email_status, "sending");
+  assert.equal(store.sends(), 1);
+  options.resendClaimExpired = true;
+  const laterRetry = await store.request({ action: "resend", order_id: orderId });
+  assert.equal(laterRetry.body.order.email_status, "accepted");
+  assert.equal(store.attempts[0].idempotencyKey, store.attempts[1].idempotencyKey);
+  assert.equal(store.records.size, 1);
 });

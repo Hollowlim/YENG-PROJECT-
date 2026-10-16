@@ -65,8 +65,8 @@ function buildSampleInvoice({ id, requestId, user, customer, lines, products, ex
   const canonical = normalizeCheckout({ request_id: requestId, items: lines, customer, expected_total_sen: expectedTotal });
   object(user, "Signed-in customer");
   const userId = text(user.id, "customer ID", 120);
-  const email = text(user.email, "customer email", 254).toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw new CheckoutError("A verified customer email is required.", 401, "authentication_required");
+  const email2 = text(user.email, "customer email", 254).toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email2)) throw new CheckoutError("A verified customer email is required.", 401, "authentication_required");
   const timestamp = new Date(createdAt);
   if (!Number.isFinite(timestamp.getTime())) throw new CheckoutError("A valid invoice date is required.");
   if (!Array.isArray(products)) throw new CheckoutError("The catalogue could not be loaded.", 503, "catalogue_unavailable");
@@ -76,10 +76,13 @@ function buildSampleInvoice({ id, requestId, user, customer, lines, products, ex
     const variant = product.variants?.find((entry) => entry.size === line.size);
     if (!variant || !Number.isSafeInteger(variant.stock) || variant.stock < line.quantity) throw new CheckoutError("A size or quantity is no longer available in stock. Review your bag.", 409, "item_unavailable");
     const unit_price_sen = integer(product.price_sen, "product price");
-    return { product_id: line.product_id, name: text(product.name, "product name", 120), size: line.size, quantity: line.quantity, unit_price_sen };
+    const reward_points = integer(product.reward_points ?? 100, "product reward points from 0 to 100,000", 1e5);
+    return { product_id: line.product_id, name: text(product.name, "product name", 120), size: line.size, quantity: line.quantity, unit_price_sen, reward_points };
   });
   const total = items.reduce((sum, line) => sum + line.unit_price_sen * line.quantity, 0);
   integer(total, "invoice total; the amount is too large");
+  const points = items.reduce((sum, line) => sum + line.reward_points * line.quantity, 0);
+  integer(points, "sample points total; the amount is too large");
   if (total !== canonical.expected_total_sen) throw new CheckoutError("Prices changed. Review your bag total before completing the sample checkout.", 409, "price_changed");
   return {
     id: invoiceId,
@@ -90,7 +93,7 @@ function buildSampleInvoice({ id, requestId, user, customer, lines, products, ex
     status: "sample_completed",
     currency: "MYR",
     customer_name: canonical.customer.name,
-    customer_email: email,
+    customer_email: email2,
     billing_address: canonical.customer.address,
     postcode: canonical.customer.postcode,
     country: canonical.customer.country,
@@ -99,6 +102,7 @@ function buildSampleInvoice({ id, requestId, user, customer, lines, products, ex
     shipping_sen: 0,
     total_sen: total,
     item_count: items.reduce((sum, line) => sum + line.quantity, 0),
+    points,
     email_status: "pending",
     email_error: "",
     email_provider_id: null,
@@ -112,11 +116,13 @@ var money = (amount) => new Intl.NumberFormat("en-MY", { style: "currency", curr
 function renderInvoiceEmail(order) {
   const subject = `CROWNNETIC SAMPLE INVOICE \u2014 ${String(order.reference).replace(/[\r\n]/g, " ")}`;
   const description = "NO PAYMENT COLLECTED \xB7 NOT A TAX INVOICE";
+  const points = new Intl.NumberFormat("en-MY").format(integer(order.points ?? 0, "sample points total"));
+  const notice = "This is a no-charge demonstration. No order will be dispatched. Shipping is illustrative. Sample points are for testing only and have no cash value.";
   const date = new Intl.DateTimeFormat("en-MY", { dateStyle: "long", timeZone: "Asia/Kuala_Lumpur" }).format(new Date(order.created_at));
   const lines = order.items.map((item) => `${item.name} \xB7 ${item.size} \xB7 ${item.quantity} \xD7 ${money(item.unit_price_sen)} = ${money(item.quantity * item.unit_price_sen)}`);
-  const text2 = ["CROWNNETIC", "SAMPLE INVOICE", description, "", `Reference: ${order.reference}`, `Date: ${date}`, `Customer: ${order.customer_name}`, `Email: ${order.customer_email}`, `Billing address: ${order.billing_address}`, `${order.postcode}, ${order.country}`, "", ...lines, "", `Subtotal: ${money(order.subtotal_sen)}`, `Illustrative shipping: ${money(order.shipping_sen)}`, `Sample total: ${money(order.total_sen)} MYR`, "", "This is a no-charge demonstration. No order will be dispatched. Shipping is illustrative. This sample does not award real reward points."].join("\n");
+  const text2 = ["CROWNNETIC", "SAMPLE INVOICE", description, "", `Reference: ${order.reference}`, `Date: ${date}`, `Customer: ${order.customer_name}`, `Email: ${order.customer_email}`, `Billing address: ${order.billing_address}`, `${order.postcode}, ${order.country}`, "", ...lines, "", `Subtotal: ${money(order.subtotal_sen)}`, `Illustrative shipping: ${money(order.shipping_sen)}`, `Sample total: ${money(order.total_sen)} MYR`, `SAMPLE POINTS EARNED: ${points}`, "", notice].join("\n");
   const rows = order.items.map((item) => `<tr><td style="padding:16px 0;border-bottom:1px solid #deded8"><strong>${escape(item.name)}</strong><br><span style="color:#61645e;font-size:12px">Size ${escape(item.size)} \xB7 ${escape(item.quantity)} \xD7 ${escape(money(item.unit_price_sen))}</span></td><td style="padding:16px 0;border-bottom:1px solid #deded8;text-align:right;white-space:nowrap">${escape(money(item.quantity * item.unit_price_sen))}</td></tr>`).join("");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#ededE8;color:#171a16;font-family:Arial,Helvetica,sans-serif"><div style="max-width:640px;margin:0 auto;padding:36px 22px"><div style="background:#101310;color:#f2f2e9;padding:30px 25px;border-radius:14px 14px 0 0"><p style="letter-spacing:5px;font-size:18px;margin:0 0 28px">CROWNNETIC</p><h1 style="font-size:30px;letter-spacing:-1px;margin:0">SAMPLE INVOICE</h1><p style="font-size:10px;letter-spacing:1px;margin:14px 0 0;color:#d4d8ca">${description}</p></div><div style="padding:27px 25px;background:#fafaf6;border:1px solid #d8dcd2;border-radius:0 0 14px 14px"><p style="font-size:12px;line-height:1.8;overflow-wrap:anywhere"><strong>Reference</strong><br>${escape(order.reference)}<br><strong>Date</strong> ${escape(date)}</p><p style="font-size:13px;line-height:1.8"><strong>${escape(order.customer_name)}</strong><br>${escape(order.customer_email)}<br>${escape(order.billing_address).replaceAll("\n", "<br>")}<br>${escape(order.postcode)}, ${escape(order.country)}</p><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th scope="col" style="text-align:left;padding:20px 0 8px;font-size:10px;letter-spacing:1px">THE PIECES</th><th scope="col" style="text-align:right;padding:20px 0 8px;font-size:10px;letter-spacing:1px">AMOUNT</th></tr></thead><tbody>${rows}</tbody></table><table style="width:100%;margin-top:20px;font-size:12px"><tr><td style="padding:6px 0">Subtotal</td><td style="text-align:right">${escape(money(order.subtotal_sen))}</td></tr><tr><td style="padding:6px 0">Illustrative shipping</td><td style="text-align:right">${escape(money(order.shipping_sen))}</td></tr><tr><td style="padding:15px 0;font-size:16px"><strong>Sample total</strong></td><td style="text-align:right;font-size:16px"><strong>${escape(money(order.total_sen))} MYR</strong></td></tr></table><p style="margin-top:25px;font-size:12px;line-height:1.8;color:#61645e">This is a no-charge demonstration. No order will be dispatched. Shipping is illustrative. This sample does not award real reward points.</p></div></div></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#ededE8;color:#171a16;font-family:Arial,Helvetica,sans-serif"><div style="max-width:640px;margin:0 auto;padding:36px 22px"><div style="background:#101310;color:#f2f2e9;padding:30px 25px;border-radius:14px 14px 0 0"><p style="letter-spacing:5px;font-size:18px;margin:0 0 28px">CROWNNETIC</p><h1 style="font-size:30px;letter-spacing:-1px;margin:0">SAMPLE INVOICE</h1><p style="font-size:10px;letter-spacing:1px;margin:14px 0 0;color:#d4d8ca">${description}</p></div><div style="padding:27px 25px;background:#fafaf6;border:1px solid #d8dcd2;border-radius:0 0 14px 14px"><p style="font-size:12px;line-height:1.8;overflow-wrap:anywhere"><strong>Reference</strong><br>${escape(order.reference)}<br><strong>Date</strong> ${escape(date)}</p><p style="font-size:13px;line-height:1.8"><strong>${escape(order.customer_name)}</strong><br>${escape(order.customer_email)}<br>${escape(order.billing_address).replaceAll("\n", "<br>")}<br>${escape(order.postcode)}, ${escape(order.country)}</p><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr><th scope="col" style="text-align:left;padding:20px 0 8px;font-size:10px;letter-spacing:1px">THE PIECES</th><th scope="col" style="text-align:right;padding:20px 0 8px;font-size:10px;letter-spacing:1px">AMOUNT</th></tr></thead><tbody>${rows}</tbody></table><table style="width:100%;margin-top:20px;font-size:12px"><tr><td style="padding:6px 0">Subtotal</td><td style="text-align:right">${escape(money(order.subtotal_sen))}</td></tr><tr><td style="padding:6px 0">Illustrative shipping</td><td style="text-align:right">${escape(money(order.shipping_sen))}</td></tr><tr><td style="padding:15px 0;font-size:16px"><strong>Sample total</strong></td><td style="text-align:right;font-size:16px"><strong>${escape(money(order.total_sen))} MYR</strong></td></tr><tr><td style="padding:12px 0;border-top:1px solid #deded8;font-size:10px;letter-spacing:1px"><strong>SAMPLE POINTS EARNED</strong></td><td style="text-align:right;padding:12px 0;border-top:1px solid #deded8"><strong>${escape(points)}</strong></td></tr></table><p style="margin-top:25px;font-size:12px;line-height:1.8;color:#61645e">${escape(notice)}</p></div></div></body></html>`;
   return { subject, html, text: text2 };
 }
 
@@ -125,10 +131,12 @@ var MAX_BODY_BYTES = 64 * 1024;
 var UUID2 = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var EMAIL_UNAVAILABLE = "Invoice email is not configured for this sample. Your sample invoice is saved; no email was sent.";
 var EMAIL_RESTRICTED = "Test email can only be sent to the configured verified test recipient. Your sample invoice is saved; no email was sent.";
-var EMAIL_FAILED = "The email provider did not confirm acceptance. Your sample invoice is saved. You can retry its email without creating another invoice.";
+var EMAIL_FAILED = "The email provider rejected this request. Your sample invoice is saved. You can retry its email without creating another invoice.";
+var EMAIL_UNKNOWN = "Email acceptance could not be confirmed. The store needs to review this invoice before another email attempt.";
+var validEmail = (value) => typeof value === "string" && value.length <= 254 && /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value);
 function publicOrder(value) {
   if (!value) return value;
-  const { email_claim_id, email_claimed, email_lease_until, ...order } = value;
+  const { email_claim_id, email_claimed, email_lease_until, email_claim_provider, ...order } = value;
   return order;
 }
 function sameRequest(previous, current) {
@@ -175,6 +183,8 @@ async function readJson(request) {
 }
 function createSampleCheckoutHandler({ authenticate, getProducts, repository: repository2, sendEmail, config, now = () => (/* @__PURE__ */ new Date()).toISOString(), uuid: uuid2 = () => crypto.randomUUID() }) {
   const origins = new Set(config.allowedOrigins || []);
+  const provider = String(config.provider || "resend").trim().toLowerCase();
+  const fromEmail = String(config.fromEmail || "").trim();
   async function currentOrder(userId, order, fallback = order) {
     try {
       return await repository2.getById(userId, order.id) || fallback;
@@ -183,27 +193,42 @@ function createSampleCheckoutHandler({ authenticate, getProducts, repository: re
     }
   }
   async function deliverInvoice(order, user) {
-    if (order.email_status === "accepted") return order;
+    if (["accepted", "review"].includes(order.email_status) || order.email_retry_blocked) return order;
     const recipient = String(user.email || "").trim().toLowerCase();
     const allowedRecipient = String(config.testRecipient || "").trim().toLowerCase();
-    if (!config.resendConfigured || !/^\S+@\S+\.\S+$/.test(allowedRecipient)) return repository2.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
-    if (recipient !== allowedRecipient || String(order.customer_email).toLowerCase() !== recipient) return repository2.setEmailUnavailable(order.id, "restricted", EMAIL_RESTRICTED);
-    const claimed = await repository2.claimEmail(order.id);
+    if (String(order.customer_email).toLowerCase() !== recipient) return repository2.setEmailUnavailable(order.id, "restricted", "The invoice email does not match your current verified account email. No email was sent.");
+    if (provider === "sendgrid") {
+      if (!config.sendgridConfigured || !validEmail(fromEmail)) return repository2.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+    } else if (provider === "resend") {
+      if (!config.resendConfigured || !validEmail(allowedRecipient)) return repository2.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+      if (recipient !== allowedRecipient) return repository2.setEmailUnavailable(order.id, "restricted", EMAIL_RESTRICTED);
+    } else return repository2.setEmailUnavailable(order.id, "not_configured", EMAIL_UNAVAILABLE);
+    const claimed = provider === "sendgrid" ? await repository2.claimEmailOnce(order.id) : await repository2.claimEmail(order.id);
     if (!claimed.email_claimed || !claimed.email_claim_id) return publicOrder(claimed);
     const message = renderInvoiceEmail(claimed);
     let accepted;
     try {
       accepted = await sendEmail({
-        from: "CROWNNETIC Sample <onboarding@resend.dev>",
+        invoiceId: claimed.id,
+        from: provider === "sendgrid" ? fromEmail : "CROWNNETIC Sample <onboarding@resend.dev>",
         to: [recipient],
         ...message,
-        idempotencyKey: `sample-invoice/${claimed.id}/v1`
+        ...provider === "resend" ? { idempotencyKey: `sample-invoice/${claimed.id}/v1` } : {}
       });
-      if (!accepted || typeof accepted.id !== "string" || !accepted.id || accepted.id.length > 200) throw Error("No provider acceptance identifier");
+      if (!accepted || typeof accepted.id !== "string" || !accepted.id || accepted.id.length > 200) throw Object.assign(Error("No provider acceptance identifier"), { deliveryUnknown: true });
     } catch (failure) {
-      const error = failure?.name === "AbortError" || failure?.name === "TimeoutError" ? "The email request timed out before acceptance was confirmed. Your sample invoice is saved. Retry its email after the cooldown." : EMAIL_FAILED;
+      if (failure?.deliveryUnknown !== false) {
+        if (provider === "sendgrid") {
+          try {
+            return await repository2.markEmailUnknown(claimed.id, claimed.email_claim_id, EMAIL_UNKNOWN);
+          } catch {
+            return currentOrder(user.id, claimed);
+          }
+        }
+        return currentOrder(user.id, claimed);
+      }
       try {
-        return await repository2.finishEmail(claimed.id, claimed.email_claim_id, null, error);
+        return await repository2.finishEmail(claimed.id, claimed.email_claim_id, null, EMAIL_FAILED);
       } catch {
         return currentOrder(user.id, claimed);
       }
@@ -278,11 +303,70 @@ function createSampleCheckoutHandler({ authenticate, getProducts, repository: re
   };
 }
 
+// supabase/functions/sample-checkout/email-provider.js
+var InvoiceEmailError = class extends Error {
+  constructor(message, deliveryUnknown = true, status = null) {
+    super(message);
+    this.name = "InvoiceEmailError";
+    this.deliveryUnknown = deliveryUnknown;
+    this.status = status;
+  }
+};
+var email = (value) => typeof value === "string" && value.length <= 254 && /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value);
+function createInvoiceEmailSender({ provider = "resend", sendgridKey: sendgridKey2 = "", resendKey: resendKey2 = "", fetchImpl = globalThis.fetch, timeoutMs = 15e3 }) {
+  const selected = String(provider).trim().toLowerCase();
+  return async function sendInvoiceEmail(message) {
+    if (!Array.isArray(message.to) || message.to.length !== 1 || !email(message.to[0])) throw new InvoiceEmailError("A verified invoice recipient is required.", false);
+    let url;
+    let headers;
+    let body;
+    if (selected === "sendgrid") {
+      if (!sendgridKey2.trim()) throw new InvoiceEmailError("The email provider is not configured.", false);
+      if (!email(message.from)) throw new InvoiceEmailError("A valid verified sender email is required.", false);
+      url = "https://api.sendgrid.com/v3/mail/send";
+      headers = { authorization: `Bearer ${sendgridKey2.trim()}`, "content-type": "application/json" };
+      body = {
+        personalizations: [{ to: [{ email: message.to[0] }] }],
+        from: { email: message.from, name: "CROWNNETIC Sample" },
+        subject: message.subject,
+        content: [{ type: "text/plain", value: message.text }, { type: "text/html", value: message.html }]
+      };
+    } else if (selected === "resend") {
+      if (!resendKey2.trim()) throw new InvoiceEmailError("The email provider is not configured.", false);
+      url = "https://api.resend.com/emails";
+      headers = { authorization: `Bearer ${resendKey2.trim()}`, "content-type": "application/json", "idempotency-key": message.idempotencyKey };
+      body = { from: message.from, to: message.to, subject: message.subject, html: message.html, text: message.text };
+    } else throw new InvoiceEmailError("The invoice email provider is not configured.", false);
+    let response;
+    try {
+      response = await fetchImpl(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs) });
+    } catch {
+      throw new InvoiceEmailError("Email acceptance could not be confirmed.", true);
+    }
+    if (selected === "sendgrid" && response.status === 202) {
+      const providerId = response.headers.get("x-message-id");
+      return { id: providerId && providerId.length <= 200 ? providerId : `sendgrid:${message.invoiceId}` };
+    }
+    if (selected === "resend" && response.ok) {
+      try {
+        const result = await response.json();
+        if (typeof result?.id === "string" && result.id && result.id.length <= 200) return { id: result.id };
+      } catch {
+      }
+      throw new InvoiceEmailError("Email acceptance could not be confirmed.", true);
+    }
+    const definiteRejection = response.status >= 400 && response.status < 500 && response.status !== 408;
+    throw new InvoiceEmailError(definiteRejection ? "The email provider rejected this request." : "Email acceptance could not be confirmed.", !definiteRejection, response.status);
+  };
+}
+
 // supabase/functions/sample-checkout/index.ts
 var projectUrl = Deno.env.get("SUPABASE_URL") || "";
 var publicKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
 var serverKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY") || "";
 var resendKey = Deno.env.get("RESEND_API_KEY") || "";
+var sendgridKey = Deno.env.get("SENDGRID_API_KEY") || "";
+var emailProvider = (Deno.env.get("INVOICE_EMAIL_PROVIDER") || "resend").trim().toLowerCase();
 var clientOptions = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 var privilegedClient;
 function database() {
@@ -291,7 +375,8 @@ function database() {
   return privilegedClient;
 }
 function storageError(error) {
-  if (["42P01", "42883", "PGRST200", "PGRST202", "PGRST205"].includes(error.code || "")) throw new CheckoutError("Sample invoice storage is not ready. Apply supabase/005_sample_checkout.sql in Supabase.", 503, "setup_required");
+  if (["42703", "PGRST204"].includes(error.code || "")) throw new CheckoutError("Sample invoice rewards and email setup is not ready. Apply supabase/006_sample_rewards.sql in Supabase.", 503, "setup_required");
+  if (["42P01", "42883", "PGRST200", "PGRST202", "PGRST205"].includes(error.code || "")) throw new CheckoutError("Sample invoice storage is not ready. Apply supabase/006_sample_rewards.sql in Supabase.", 503, "setup_required");
   if (/^Daily sample invoice limit reached\./.test(error.message || "")) throw new CheckoutError("Daily sample invoice limit reached. Please try again tomorrow.", 429, "sample_limit_reached");
   throw new Error("The sample invoice storage operation could not be completed.");
 }
@@ -303,12 +388,12 @@ async function rpc(name, args) {
 }
 var repository = {
   async getByRequest(userId, requestId) {
-    const { data, error } = await database().from("sample_orders").select("*").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
+    const { data, error } = await database().from("sample_orders").select("*,points").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
     if (error) storageError(error);
     return data;
   },
   async getById(userId, id) {
-    const { data, error } = await database().from("sample_orders").select("*").eq("user_id", userId).eq("id", id).maybeSingle();
+    const { data, error } = await database().from("sample_orders").select("*,points").eq("user_id", userId).eq("id", id).maybeSingle();
     if (error) storageError(error);
     return data;
   },
@@ -317,15 +402,21 @@ var repository = {
   },
   async setEmailUnavailable(id, status, errorMessage) {
     const db = database();
-    const { data, error } = await db.from("sample_orders").update({ email_status: status, email_error: errorMessage }).eq("id", id).in("email_status", ["pending", "not_configured", "restricted", "failed"]).select("*").maybeSingle();
+    const { data, error } = await db.from("sample_orders").update({ email_status: status, email_error: errorMessage }).eq("id", id).in("email_status", ["pending", "not_configured", "restricted", "failed"]).eq("email_retry_blocked", false).select("*,points").maybeSingle();
     if (error) storageError(error);
     if (data) return data;
-    const latest = await db.from("sample_orders").select("*").eq("id", id).single();
+    const latest = await db.from("sample_orders").select("*,points").eq("id", id).single();
     if (latest.error) storageError(latest.error);
     return latest.data;
   },
   claimEmail(id) {
     return rpc("claim_sample_invoice_email", { p_order_id: id });
+  },
+  claimEmailOnce(id) {
+    return rpc("claim_sample_invoice_email_once", { p_order_id: id });
+  },
+  markEmailUnknown(id, claimId, errorMessage) {
+    return rpc("mark_sample_invoice_email_unknown", { p_order_id: id, p_claim_id: claimId, p_error: errorMessage });
   },
   finishEmail(id, claimId, providerId, errorMessage) {
     return rpc("finish_sample_invoice_email", { p_order_id: id, p_claim_id: claimId, p_provider_id: providerId, p_error: errorMessage });
@@ -342,24 +433,16 @@ var handler = createSampleCheckoutHandler({
   async getProducts(ids) {
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) return [];
-    const { data, error } = await database().from("products").select("id,name,price_sen,published,variants:product_variants(size,stock)").in("id", uniqueIds).eq("published", true);
+    const { data, error } = await database().from("products").select("id,name,price_sen,reward_points,published,variants:product_variants(size,stock)").in("id", uniqueIds).eq("published", true);
     if (error) storageError(error);
     return data || [];
   },
   repository,
-  async sendEmail(message) {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { authorization: `Bearer ${resendKey}`, "content-type": "application/json", "idempotency-key": message.idempotencyKey },
-      body: JSON.stringify({ from: message.from, to: message.to, subject: message.subject, html: message.html, text: message.text }),
-      signal: AbortSignal.timeout(15e3)
-    });
-    if (!response.ok) throw new Error("The email provider did not accept the request.");
-    const accepted = await response.json();
-    if (typeof accepted?.id !== "string") throw new Error("The email provider did not return an acceptance ID.");
-    return { id: accepted.id };
-  },
+  sendEmail: createInvoiceEmailSender({ provider: emailProvider, sendgridKey, resendKey }),
   config: {
+    provider: emailProvider,
+    sendgridConfigured: Boolean(sendgridKey.trim()),
+    fromEmail: Deno.env.get("INVOICE_FROM_EMAIL") || "",
     allowedOrigins: (Deno.env.get("INVOICE_ALLOWED_ORIGINS") || "").split(",").map((origin) => origin.trim()).filter(Boolean),
     resendConfigured: Boolean(resendKey.trim()),
     testRecipient: Deno.env.get("INVOICE_TEST_RECIPIENT") || ""

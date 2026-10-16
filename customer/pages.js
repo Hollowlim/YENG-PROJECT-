@@ -3,6 +3,7 @@ import { connected } from "../catalog.js";
 import { usesEmailCode } from "./service.js";
 import { loyaltyTier } from "./model.js";
 import { sampleInvoiceHistory } from "../checkout/pages.js";
+import { summarizeSampleRewards } from "../checkout/rewards.js";
 import "./styles.css";
 const link = (path, text, cls = "") =>
   `<a href="#${path}" data-link class="${cls}">${text}</a>`;
@@ -26,6 +27,16 @@ function pointEvent(event) {
 function purchaseHistory(orders) {
   return `<section class="purchase-history"><h2>YOUR PURCHASE HISTORY.</h2>${!connected ? '<p class="account-note">Sample sales recorded in this browser only.</p>' : ""}${orders.length ? orders.map((order) => `<article class="customer-order"><div class="section-top"><div><strong>${e(order.reference)}</strong><p>${e(timestamp(order.created_at))} · ${e(order.channel)}</p></div><span class="order-status">${order.status === "refunded" ? "Refunded" : "Paid"}</span></div><ul class="order-items">${(order.items || []).map((item) => `<li><div><strong>${e(item.name)}</strong><p><span>Size</span>: ${e(item.size || "—")} · <span>Quantity</span>: ${item.quantity} · ${money(item.unit_price_sen)} <span>each</span></p></div><strong>${money(item.quantity * item.unit_price_sen)}</strong></li>`).join("")}</ul><p class="order-total"><span>Total</span> <strong>${money(order.total_sen)}</strong></p><p><span>Purchase points</span>: ${order.points.toLocaleString()}</p>${order.fulfillment_status ? `<p><span>Fulfillment</span>: <span>${e(order.fulfillment_status)}</span></p>` : ""}${order.tracking_number ? `<p><span>Tracking number</span>: ${e(order.tracking_number)}</p>` : ""}${order.status === "refunded" ? `<p class="order-refund"><span>Refund reason</span>: ${e(order.refund_reason || "—")}</p>` : ""}</article>`).join("") : '<div class="account-empty"><p>No recorded purchases yet.</p></div>'}</section>`;
 }
+function sampleRewardsCard(orders) {
+  const { points, invoiceCount, tier } = summarizeSampleRewards(orders);
+  if (!invoiceCount) return "";
+  return `<section class="sample-rewards" aria-labelledby="sample-rewards-heading"><article class="sample-rewards-card sample-tier-${tier.name.toLowerCase()}">
+    <div class="sample-rewards-top"><span class="small-label">SAMPLE MEMBERSHIP</span><span class="sample-tier-badge">${e(tier.name)}</span></div>
+    <div><span class="small-label">SAMPLE POINTS</span><p class="sample-points-number">${points.toLocaleString()}</p><p class="sample-rewards-count">From ${invoiceCount.toLocaleString()} sample ${invoiceCount === 1 ? "invoice" : "invoices"}</p></div>
+    <div class="sample-tier-progress" role="progressbar" aria-label="Sample tier progress" aria-valuenow="${Math.round(tier.progress)}" aria-valuemin="0" aria-valuemax="100"><span style="width:${tier.progress}%"></span></div>
+    <p class="sample-tier-caption">${tier.next ? `${(tier.next.threshold - points).toLocaleString()} sample points to ${e(tier.next.name)}` : "Your sample membership has reached Platinum."}</p>
+  </article><div class="sample-rewards-description"><span class="small-label">YOUR CHECKOUT REHEARSALS</span><h2 id="sample-rewards-heading">SAMPLE REWARDS.</h2><p>Each completed sample invoice adds sample points here, even if its email is still pending or cannot be delivered.</p><p>100 sample points per item by default. Individual products may award a different amount, saved when your invoice is created.</p><dl class="sample-reward-thresholds"><div><dt>Bronze</dt><dd>1,000</dd></div><div><dt>Gold</dt><dd>5,000</dd></div><div><dt>Platinum</dt><dd>10,000</dd></div></dl><p class="sample-rewards-note">Sample points and tiers have no cash value and do not change your purchase rewards or membership above.</p></div></section>`;
+}
 export function dashboard(user, activity, orders = [], sampleOrders = []) {
   const total = activity.reduce((sum, event) => sum + event.points, 0),
     tier = loyaltyTier(total);
@@ -40,7 +51,7 @@ export function dashboard(user, activity, orders = [], sampleOrders = []) {
     )
     .join(
       "",
-    )}</div><p class="account-note">100 points per item by default. Individual items may earn different points.</p>${link("/shop", "SHOP THE COLLECTION", "button")}</div></div><section class="rewards-history"><div class="section-top"><h2>YOUR POINTS HISTORY.</h2><button class="small-button" data-customer-logout>SIGN OUT</button></div>${activity.length ? `<div class="history-list">${activity.map(pointEvent).join("")}</div>` : '<div class="account-empty"><p>No points activity yet.</p><p>Your points will appear here after your first purchase.</p></div>'}</section>${purchaseHistory(orders)}${sampleInvoiceHistory(sampleOrders)}</section>`;
+    )}</div><p class="account-note">100 points per item by default. Individual items may earn different points.</p>${link("/shop", "SHOP THE COLLECTION", "button")}</div></div>${sampleRewardsCard(sampleOrders)}<section class="rewards-history"><div class="section-top"><h2>YOUR POINTS HISTORY.</h2><button class="small-button" data-customer-logout>SIGN OUT</button></div>${activity.length ? `<div class="history-list">${activity.map(pointEvent).join("")}</div>` : '<div class="account-empty"><p>No points activity yet.</p><p>Your points will appear here after your first purchase.</p></div>'}</section>${purchaseHistory(orders)}${sampleInvoiceHistory(sampleOrders)}</section>`;
 }
 export function settingsPage(user) {
   return `<section class="page customer-auth"><span class="small-label">CROWNNETIC MEMBERS</span><h1 class="page-heading">PROFILE SETTINGS.</h1>${link("/account", "Back to dashboard", "text-link")}<form id="customer-settings" style="margin-top:30px"><div class="field"><label for="profile-name">Full name</label><input id="profile-name" name="name" value="${e(user.name)}" required maxlength="80" autocomplete="name"></div><div class="field"><label for="profile-email">Email address</label><input id="profile-email" value="${e(user.email)}" type="email" readonly></div><div class="field"><label for="profile-phone">Phone number</label><input id="profile-phone" name="phone" type="tel" maxlength="30" autocomplete="tel" value="${e(user.phone)}"></div><div class="field"><label for="profile-address">Delivery address</label><textarea id="profile-address" name="address" maxlength="400" autocomplete="street-address">${e(user.address)}</textarea></div><p class="error customer-error" role="alert"></p><p class="customer-saved" role="status"></p><button class="button" type="submit">SAVE PROFILE <span aria-hidden="true">→</span></button></form></section>`;

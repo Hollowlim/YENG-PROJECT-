@@ -1,128 +1,187 @@
-# Test a sample payment and invoice email
+# Sample purchases, points and invoice emails
 
-The checkout now supports a **successful**, **declined** or **cancelled** sample
-payment. No money is charged. Success saves a separate sample invoice, shows
-email status, and lets the customer print/save PDF or preview the email. Signed-in
-customers can reopen their own samples from their account. Failure retains the
-bag. An interrupted request is recovered with its original details and quote.
+Every signed-in customer can complete a **no-charge sample purchase**, earn sample
+points and open their own printable invoice. Default rewards are **100 points per
+item**; Product Room can override this for each product. Quantity counts. The
+account dashboard shows a separate Sample Rewards balance with Member below
+1,000, Bronze at 1,000, Gold at 5,000 and Platinum at 10,000 points.
 
-Samples never enter real paid sales, reduce stock or award real rewards. Existing
-browser-only demo points remain illustrative. The invoice says **SAMPLE INVOICE —
-NO PAYMENT COLLECTED — NOT A TAX INVOICE**. The email contains the invoice itself;
-there is no PDF attachment in this test.
+Sample points come from the saved invoice, independently of email delivery. A
+retry, refresh or reopened invoice never awards them again. The invoice snapshots
+prices and rewards, so later product changes do not rewrite history. Older sample
+invoices without a points snapshot stay at zero. Guest browser previews earn zero
+account points. Existing local demo membership events remain in their old ledger;
+new samples use the separate balance.
 
-## Enable actual test email in your Supabase project
+These are sample rewards with no cash value. Samples do not become real paid
+sales, reduce stock or dispatch goods. The invoice says **SAMPLE INVOICE — NO
+PAYMENT COLLECTED — NOT A TAX INVOICE**. It is a demonstration, not a Malaysian
+LHDN/MyInvois submission. The email contains the invoice itself; PDF is available
+through Print / Save PDF on the website, without an email attachment.
 
-The code is supplied in this repository; the migration and Edge Function are **not
-automatically installed in your live project**. Supabase's signup email/SMTP page
-cannot send purchase invoices. No real emails were sent by automated tests.
+## Set up email for any customer's sample purchase
 
-1. In **Supabase → SQL Editor → New query**, paste all of
-   [005_sample_checkout.sql](../supabase/005_sample_checkout.sql) and run it as
-   `postgres`. Your current project needs the existing 001–004 setup first. This
-   new script is rerunnable and preserves sample rows. Expect **005 complete:
-   isolated no-charge sample invoices**.
-2. In **Edge Functions → Secrets**, add the values below. Enter the API key there
-   directly. Use a new replacement key if an earlier key was exposed in chat.
-   Never put these secrets in `site-config.js`, a `VITE_` variable or GitHub.
+Use **SendGrid Single Sender Verification** for this test. Unlike Resend's shared
+onboarding sender, it does not intentionally limit the recipient to the store
+owner. It still requires a verified sender and an account authorized by SendGrid
+to send mail, within its current trial/plan limits. It does not guarantee delivery
+or remove spam filtering. Free mailbox sender addresses can also encounter DMARC
+filtering. Domain authentication is the recommended launch setup.
+
+The repository changes do **not** install SQL, deploy the Edge Function or
+configure secrets in your live Supabase project. Automated tests send no mail.
+
+1. Create/access a [SendGrid account](https://app.sendgrid.com/). In **Settings →
+   Sender Authentication → Single Sender Verification**, create a sender using
+   an inbox you control, complete the required sender details and click the
+   verification email. Use the exact verified address in the next step. Do not
+   use Resend's `onboarding@resend.dev` address as a SendGrid sender.
+2. In **SendGrid → Settings → API Keys**, create a restricted key with **Mail Send**
+   permission. Store the key directly in Supabase below; never paste it in chat,
+   commit it, or put it in a `VITE_` variable.
+3. In **Supabase → SQL Editor → New query**, paste the entire
+   [006_sample_rewards.sql](../supabase/006_sample_rewards.sql) and run as
+   `postgres`, after the existing 001–004 schema. This **one new query** includes
+   sample invoice storage and works whether or not you previously ran 005. It is
+   rerunnable and preserves existing rows. Expect **006 complete: isolated SAMPLE invoice points**. Fresh projects can instead run the combined
+   [setup.sql](../supabase/setup.sql).
+4. In **Supabase → Edge Functions → Secrets**, add:
 
    | Secret | Value |
    | --- | --- |
-   | `RESEND_API_KEY` | Your replacement Resend API key, with permission to send email. |
-   | `INVOICE_TEST_RECIPIENT` | The exact email address you used to register your Resend account. |
-   | `INVOICE_ALLOWED_ORIGINS` | Comma-separated origins of your storefront, for example `http://localhost:5173,http://127.0.0.1:5173`. If testing by double-clicking `index.html`, explicitly include `null`. Use the actual HTTPS origin when hosted. |
+   | `INVOICE_EMAIL_PROVIDER` | `sendgrid` |
+   | `SENDGRID_API_KEY` | The restricted SendGrid key from step 2. |
+   | `INVOICE_FROM_EMAIL` | The exact sender email verified in step 1. |
+   | `INVOICE_ALLOWED_ORIGINS` | Comma-separated storefront origins, e.g. `http://localhost:5173,http://127.0.0.1:5173`. For a double-clicked local `index.html`, explicitly include `null`. For hosting, include the actual HTTPS origin without a path. |
 
-3. In **Edge Functions**, deploy a new function named **`sample-checkout`** using
-   the editor. Use **index.js** as the JavaScript entry file and replace its
-   example source with the entire ready-to-paste file
-   [supabase/sample-checkout.js](../supabase/sample-checkout.js), then deploy.
-   Disable the function gateway's **Verify JWT with legacy secret** setting when
-   using the project's newer signing keys. The function always verifies the
-   supplied access token with Supabase Auth itself and refuses unconfirmed or
-   unauthenticated customers; disabling the legacy gateway check does not bypass
-   this application authentication.
-4. Sign up/verify a customer account using the same email as
-   `INVOICE_TEST_RECIPIENT`. Log in as that customer on the updated website. Add
-   one published product with stock, open Bag → Sample Checkout, leave
-   **Successful sample payment** selected and complete the sample order.
-5. Open the saved invoice. Expect **accepted for delivery**, then check that inbox
-   and spam folder. In Resend → Emails, inspect the request/delivery result. API
-   acceptance alone does not prove inbox delivery. A provider failure keeps the
-   invoice; wait a minute and use **Retry invoice email**. After fixing missing
-   configuration, retry the saved invoice rather than creating another one.
+5. In **Edge Functions**, deploy a function named **`sample-checkout`**. In the
+   editor, use **index.js** as its JavaScript entry and paste the entire generated
+   [supabase/sample-checkout.js](../supabase/sample-checkout.js). Redeploy if an
+   older version already exists. Disable the gateway's **Verify JWT with legacy
+   secret** option for this project's newer signing keys. The function itself
+   always verifies the access token with Supabase Auth and requires a confirmed
+   customer. It does not permit anonymous purchases or caller-selected recipients.
+6. Open the updated website, sign in as a verified customer, add a published item
+   with stock, then choose **Bag → Sample Checkout → Successful sample payment →
+   Complete sample order**. Check the invoice points and **Account → Sample
+   Rewards**. Inspect **SendGrid → Email Activity** and the customer's inbox/spam.
+   API acceptance means accepted for delivery, not confirmed inbox receipt.
+7. Repeat with a different verified customer. Each customer receives their own
+   invoice and sees only their own sample points and history.
 
-The server uses **`CROWNNETIC Sample <onboarding@resend.dev>`**. Resend's domain-free
-test sender is restricted to its account-owner inbox. Another customer's private
-invoice is never forwarded to that owner. Other accounts can save/preview their
-sample invoice, but delivery shows **restricted**. A verified sending domain and
-a deliberate server change are needed before emailing arbitrary customers.
+The server uses `CROWNNETIC Sample` as the sender name. Supabase supplies
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` automatically
+inside deployed functions. Never copy the privileged key into the frontend.
+Catalogue prices and reward values are loaded on the server, not trusted from the
+browser.
 
-`SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are normally
-provided automatically inside Supabase Edge Functions. Do not copy the privileged
-key into the frontend. The function reads catalogue prices itself and writes
-through service-only database operations.
+### Let other customers receive signup confirmations too
 
-### CLI alternative
+Invoice delivery and signup confirmation are **separate**. Supabase's default
+signup mailer is limited to organization-team addresses. To test with ordinary
+customer addresses, configure the same verified SendGrid sender under **Supabase
+→ Authentication → Emails → SMTP Settings**:
 
-From the extracted repository, on a machine authenticated to your Supabase account:
+| Setting | Value |
+| --- | --- |
+| Sender email | Your exact SendGrid verified sender email |
+| Sender name | `CROWNNETIC` |
+| Host | `smtp.sendgrid.net` |
+| Port | `587` (STARTTLS) |
+| Username | `apikey` — this exact word, not your email |
+| Password | Your SendGrid API key, entered only in the secure Dashboard field |
+
+Keep **Confirm email** enabled and the default confirmation-link template for the
+current website mode. Set Supabase's **Site URL** to a reachable HTTPS storefront;
+a free hosting address works for the sample. `localhost` on a phone points to the
+phone. See [email verification](email-verification.md) for optional numeric codes
+and redirect troubleshooting. Provider approval and Supabase/Auth limits still
+apply; test both signup and invoice delivery separately.
+
+### If email fails or is still processing
+
+The invoice and points remain saved. An explicit provider rejection offers **Retry
+invoice email**, with at least a minute between attempts and at most five attempts.
+Fix the sender, permission, account or configuration error first. Retrying reuses
+the same invoice and points.
+
+SendGrid has no supported mail-send idempotency key. If a timeout, server error or
+interrupted worker makes acceptance uncertain, automatic sends stop and the
+invoice asks the store to review delivery. Check Email Activity and the inbox;
+creating another sample to retry can send another invoice. Accepted or uncertain
+messages are never automatically resent. There is no delivery webhook/background
+worker or customer duplicate-send override in this sample. Store investigation is
+required for uncertain sends. A live request may still complete with an accepted
+status after the page initially shows processing.
+
+## Existing Resend test setup
+
+The previous owner-inbox test remains available with `INVOICE_EMAIL_PROVIDER=resend`
+(or omit that variable), `RESEND_API_KEY` and `INVOICE_TEST_RECIPIENT` set to the
+exact email used to register Resend. Keep `INVOICE_ALLOWED_ORIGINS` as above.
+The sender is `CROWNNETIC Sample <onboarding@resend.dev>`. Delivery is restricted to
+that inbox; another customer's invoice is never forwarded to it. Other customers
+still save their own invoice and sample points, with email marked restricted.
+
+Resend retries reuse the same idempotency key for an invoice, within a 23-hour
+window. Older uncertain requests, provider changes involving uncertain requests,
+and legacy failures without enough delivery metadata require store review before
+another send. To use Resend for arbitrary customers later, verify your own sending
+domain and deliberately configure the production sender and recipient policy.
+
+## Deploy from the CLI instead
+
+From the extracted repository, on a machine authenticated to Supabase:
 
 ```sh
 npx supabase login
 npx supabase functions deploy sample-checkout --project-ref sfcxzqtthmfmpakobrpa --no-verify-jwt
 ```
 
-Set the three secrets in the Dashboard as above. The CLI deploys the source entry
-and its local imports; the editor uses the generated single-file version. To
-refresh that file after source changes:
+Set the Dashboard secrets above separately. The CLI deploys the source entry and
+local imports. To regenerate the editor's single-file JavaScript after edits:
 
 ```sh
 npm ci
 npm run build:invoice-function
 ```
 
-## Preview without backend deployment
+## Preview without deploying a backend
 
 ```sh
 node scripts/build-sample.js --demo --out-dir .test-site
 ```
 
-Open `.test-site/index.html` beside its `public` folder. A guest or sample account
-can complete a sample, reopen the receipt after refresh, print/save PDF, and open
-**Preview invoice email**. This mode clearly says **No email has been sent**.
-It cannot securely send mail from the browser. The connected root build never
-silently falls back to this local mode when its backend fails.
+Open `.test-site/index.html` beside its `public` folder. Fictional sample accounts
+can purchase, view sample tiers, reopen invoices and print/save PDF. This mode says
+**No email has been sent** and cannot send email from the browser. The connected
+root website never silently falls back to local orders when its backend fails.
 
-## Recovery, privacy and limits
+## Recovery, privacy and verification
 
-An invoice snapshots the original names, prices, sizes, quantities, billing and
-verified recipient. Repeated requests reuse its UUID and snapshot. A lost response
-keeps the original form and quote for recovery before another invoice is created.
-Bag consumption and the completed request ID are saved together, preserving new
-items and preventing duplicate removal after refresh.
+A lost checkout response keeps its original request, form and quote for recovery.
+Repeated requests reuse the saved invoice. Bag consumption is saved with its
+request ID, preserving new additions and preventing duplicate removal.
 
-Only the invoice's customer can read it through RLS. Customers cannot directly
-insert, update, delete or send sample records. The function validates the signed-in
-customer again for creation and retry, escapes email content, checks request sizes,
-and allows only configured storefront origins.
+Owner-only RLS protects invoice reads. Browser roles cannot write sample records
+or call service-only RPCs. Creation verifies the customer's current Auth email and
+is limited to ten samples per customer per UTC day. Sample records and balances
+remain separate from real loyalty events, admin sales and stock.
 
-New invoices are limited to ten per customer per UTC day. Email claims have a
-60-second lease/cooldown and five attempts maximum. Provider requests use one stable
-idempotency key per invoice; ambiguous attempts older than 23 hours require store
-review before another send, keeping within Resend's documented deduplication window.
-No automatic delivery webhook or background retry worker is included. Use Resend's
-delivery log to confirm actual delivery or investigate a rejection/bounce.
+Unit and browser tests use local data or mocked providers and block real project
+requests. Disposable PostgreSQL tests cover migration reruns, old rows, rewards,
+permissions, quotas, concurrent sends and uncertain-delivery protection. Deno
+checks both the source function and generated JavaScript. A live signup,
+purchase, second-account check and inbox check are still required after you
+configure and deploy the backend.
 
-## Verification
+References: [Single Sender Verification](https://www.twilio.com/docs/sendgrid/ui/sending-email/sender-verification),
+[SendGrid SMTP](https://www.twilio.com/docs/sendgrid/for-developers/sending-email/integrating-with-the-smtp-api),
+[Mail Send API](https://www.twilio.com/docs/sendgrid/api-reference/mail-send/mail-send).
 
-Unit and browser tests use local data or a mocked email/function project and block
-requests to the real Supabase project. SQL permissions, replay, send leases, quotas,
-and isolation are tested in disposable PostgreSQL using
-`tests/sql/sample_checkout.py`. Deno checks the actual function entry. A real
-inbox check remains necessary after live deployment and secret configuration.
-
-Current local verification: **71 unit tests, 16 distinct browser journeys and 54
-PostgreSQL assertions passed**. The combined setup was rerun with existing samples;
-invoices and permission restrictions were preserved. Deno checked both the source
-entry and generated JavaScript; a running generated function returned the expected
-204 preflight, 401 unauthenticated and 403 disallowed-origin responses. No live
-database changes or invoice emails were made.
+Local verification for this update: **97 unit tests, 13 distinct browser journeys
+and 170 PostgreSQL assertions passed**. Source and generated Edge Function Deno
+checks passed; the generated runtime returned expected 204 preflight, 401 unsigned
+and 403 disallowed-origin responses. The development server served source.html
+successfully. No live database, customer account or email delivery was changed by
+these checks.

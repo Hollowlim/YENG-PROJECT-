@@ -33,11 +33,12 @@ test.beforeEach(async ({ page }) => {
     window.print = () => { window.invoicePrintCalls += 1; };
   });
 });
-async function addToCheckout(page, base = '/index.html', product = 'core-heavyweight-tee') {
+async function addToCheckout(page, base = '/index.html', product = 'core-heavyweight-tee', quantity = 1) {
   await page.goto(`${base}#/product/${product}`);
   await page.getByRole('button', { name: 'M', exact: true }).click();
+  await page.getByLabel('QUANTITY', { exact: true }).fill(String(quantity));
   await page.getByRole('button', { name: 'ADD TO BAG', exact: true }).click();
-  await page.getByRole('link', { name: 'BAG (1)', exact: true }).click();
+  await page.getByRole('link', { name: `BAG (${quantity})`, exact: true }).click();
   await page.getByRole('button', { name: 'SAMPLE CHECKOUT', exact: true }).click();
   await expect(page.getByLabel('Sample payment result', { exact: true })).toHaveValue('success');
 }
@@ -57,6 +58,10 @@ test('guest completion persists an explicitly unpaid invoice with printable emai
   await expect(page).toHaveURL(/#\/invoice\/[0-9a-f-]{36}$/);
   const url = page.url();
   await expect(page.getByText('SIMULATION COMPLETE', { exact: true })).toBeVisible();
+  await expect(page.locator('.invoice-reward-status')).toContainText('0');
+  const guestInvoices = await page.evaluate(() => JSON.parse(localStorage.getItem('crownetic.sample-orders.v1')).orders);
+  expect(guestInvoices).toHaveLength(1);
+  expect(guestInvoices[0].order.points).toBe(0);
   const document = page.locator('.invoice-document');
   await expect(document).toContainText('SAMPLE INVOICE');
   await expect(document).toContainText(/NO PAYMENT COLLECTED/i);
@@ -108,7 +113,14 @@ test('signed-in samples appear in the owner history and are hidden from another 
   await expect(invoiceHeading(page)).toBeVisible();
   const invoiceUrl = page.url();
   await expect(page.locator('.invoice-document')).toContainText('invoice-owner@example.com');
+  await expect(page.locator('.invoice-reward-status')).toContainText('+100');
+  await expect(page.locator('.invoice-reward-status')).toContainText(/sample points earned/i);
   await page.goto('/index.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
+  await expect(page.locator('.sample-tier-badge')).toHaveText('Member');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  await page.reload();
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
   const history = page.locator('.sample-invoice-history');
   await expect(history).toBeVisible();
   await history.getByRole('link', { name: /^View sample invoice SAMPLE-/ }).click();
@@ -117,11 +129,54 @@ test('signed-in samples appear in the owner history and are hidden from another 
   await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
   await signup(page, 'Other Owner', 'other-owner@example.com');
   await expect(page.locator('.sample-invoice-history')).toHaveCount(0);
+  await expect(page.locator('.sample-points-number')).toHaveCount(0);
+  await expect(page.locator('.points-number')).toHaveText('0');
   await page.goto(invoiceUrl);
   await expect(page.locator('#page-loader')).toBeHidden();
   await expect(invoiceHeading(page)).toHaveCount(0);
   await expect(page.locator('.invoice-document')).toHaveCount(0);
   await expect(page.locator('main')).not.toContainText('invoice-owner@example.com');
+});
+
+test('quantity and per-product rewards determine a saved sample tier without changing live points', async ({ page }) => {
+  await signup(page, 'Rewards Owner', 'sample-rewards@example.com');
+  // This browser-only catalogue fixture exercises the same versioned document
+  // used by demo Product Room edits without writing to the connected catalogue.
+  await page.evaluate(() => localStorage.setItem('crownetic.catalog.v1', JSON.stringify({ version: 1, data: [{
+    id: 'core-heavyweight-tee', name: 'Core Heavyweight Tee', category: 'Tees',
+    description: 'Sample rewards fixture', published: true, price_sen: 18900,
+    image_url: './public/assets/tee.png', reward_points: 600, variants: [{ size: 'M', stock: 12 }],
+  }] })));
+  await addToCheckout(page, '/index.html', 'core-heavyweight-tee', 2);
+  await complete(page).click();
+  await expect(invoiceHeading(page)).toBeVisible();
+  const invoiceUrl = page.url();
+  await expect(page.locator('.invoice-reward-status')).toContainText('+1,200');
+  await expect(page.locator('.invoice-document')).toContainText('Quantity 2');
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('crownetic.sample-orders.v1')).orders);
+  expect(stored).toHaveLength(1);
+  expect(stored[0].order.points).toBe(1200);
+  expect(stored[0].order.items[0].reward_points).toBe(600);
+  await page.goto('/index.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('1,200');
+  await expect(page.locator('.sample-tier-badge')).toHaveText('Bronze');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  await page.evaluate(() => {
+    const catalogue = JSON.parse(localStorage.getItem('crownetic.catalog.v1'));
+    catalogue.data[0].reward_points = 0;
+    localStorage.setItem('crownetic.catalog.v1', JSON.stringify(catalogue));
+  });
+  await page.reload();
+  await expect(page.locator('.sample-points-number')).toHaveText('1,200');
+  await expect(page.locator('.sample-tier-badge')).toHaveText('Bronze');
+  await page.goto(invoiceUrl);
+  await expect(page.locator('.invoice-reward-status')).toContainText('+1,200');
+  await page.reload();
+  await expect(page.locator('.invoice-reward-status')).toContainText('+1,200');
+  await page.goto('/index.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('1,200');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('crownetic.sample-orders.v1')).orders.length)).toBe(1);
 });
 
 async function mockConnected(page, options = {}) {
@@ -145,8 +200,8 @@ async function mockConnected(page, options = {}) {
     else if (url.pathname === '/auth/v1/user') data = user;
     else if (url.pathname === '/auth/v1/logout') data = {};
     else if (url.pathname === '/rest/v1/products') data = [
-      { id: productId, name: 'Connected Sample Tee', category: 'Tees', description: 'Test fixture', published: true, price_sen: price, image_url: '/public/assets/tee.png', variants: [{ size: 'M', stock: 5 }] },
-      { id: secondProductId, name: 'Added While Waiting Tee', category: 'Tees', description: 'Another test fixture', published: true, price_sen: 5000, image_url: '/public/assets/tee.png', variants: [{ size: 'M', stock: 5 }] },
+      { id: productId, name: 'Connected Sample Tee', category: 'Tees', description: 'Test fixture', published: true, price_sen: price, reward_points: 100, image_url: '/public/assets/tee.png', variants: [{ size: 'M', stock: 5 }] },
+      { id: secondProductId, name: 'Added While Waiting Tee', category: 'Tees', description: 'Another test fixture', published: true, price_sen: 5000, reward_points: 100, image_url: '/public/assets/tee.png', variants: [{ size: 'M', stock: 5 }] },
     ];
     else if (url.pathname === '/rest/v1/customer_profiles' || url.pathname === '/rest/v1/admin_users') data = null;
     else if (url.pathname === '/rest/v1/sample_orders') data = order ? [order] : [];
@@ -161,7 +216,7 @@ async function mockConnected(page, options = {}) {
         expect(body.action).toBe('checkout');
         if (!order) {
           ordersCreated += 1;
-          order = { id: invoiceId, request_id: body.request_id, user_id: userId, reference: `SAMPLE-${invoiceId.toUpperCase()}`, created_at: new Date().toISOString(), status: 'sample_completed', currency: 'MYR', customer_name: body.customer.name, customer_email: user.email, billing_address: body.customer.address, postcode: body.customer.postcode, country: body.customer.country, items: [{ product_id: productId, name: 'Connected Sample Tee', size: 'M', quantity: 1, unit_price_sen: 18900 }], subtotal_sen: 18900, shipping_sen: 0, total_sen: 18900, item_count: 1, email_status: 'failed', email_error: 'Email provider temporarily unavailable.', email_provider_id: null, email_attempt_count: 1 };
+          order = { id: invoiceId, request_id: body.request_id, user_id: userId, reference: `SAMPLE-${invoiceId.toUpperCase()}`, created_at: new Date().toISOString(), status: 'sample_completed', currency: 'MYR', customer_name: body.customer.name, customer_email: user.email, billing_address: body.customer.address, postcode: body.customer.postcode, country: body.customer.country, items: [{ product_id: productId, name: 'Connected Sample Tee', size: 'M', quantity: 1, unit_price_sen: 18900, reward_points: 100 }], points: 100, subtotal_sen: 18900, shipping_sen: 0, total_sen: 18900, item_count: 1, email_status: options.emailReview ? 'review' : 'failed', email_retry_blocked: Boolean(options.emailReview), email_error: options.emailReview ? 'Email acceptance could not be confirmed.' : 'Email provider temporarily unavailable.', email_provider_id: null, email_attempt_count: 1 };
         }
         data = { order };
         if (checkoutGate) await checkoutGate;
@@ -188,6 +243,9 @@ test('connected email failure preserves the invoice and retries delivery for the
   await complete(page).click();
   await expect(invoiceHeading(page)).toBeVisible();
   await expect(page.locator('.invoice-document')).toContainText('member@example.com');
+  await expect(page.locator('.invoice-reward-status')).toContainText('+100');
+  await expect(page.locator('.invoice-reward-status')).toContainText(/sample points earned/i);
+  await expect(page.locator('.invoice-email-status')).toContainText(/temporarily unavailable/i);
   await expect(page.getByRole('link', { name: 'BAG (0)', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'RETRY INVOICE EMAIL', exact: true }).click();
   await expect(page.locator('.invoice-email-status')).toContainText(/accepted for delivery/i);
@@ -199,6 +257,32 @@ test('connected email failure preserves the invoice and retries delivery for the
   await page.reload();
   await expect(invoiceHeading(page)).toBeVisible();
   await expect(page.locator('.invoice-email-status')).toContainText(/accepted for delivery/i);
+  await page.goto('/sample-connected-fixture.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
+  await expect(page.locator('.sample-tier-badge')).toHaveText('Member');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  await page.reload();
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
+  await expect(page.locator('.points-number')).toHaveText('0');
+});
+
+test('uncertain email delivery requires store review while keeping the invoice and sample points', async ({ page }) => {
+  const { calls } = await mockConnected(page, { emailReview: true });
+  await addToCheckout(page, '/sample-connected-fixture.html', productId);
+  await complete(page).click();
+  await expect(invoiceHeading(page)).toBeVisible();
+  await expect(page.locator('.invoice-reward-status')).toContainText('+100');
+  await expect(page.locator('.invoice-email-status')).toContainText(/check your inbox and spam folder/i);
+  await expect(page.locator('.invoice-email-status')).toContainText(/ask the store to review/i);
+  await expect(page.getByRole('button', { name: 'RETRY INVOICE EMAIL', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(invoiceHeading(page)).toBeVisible();
+  await expect(page.locator('.invoice-reward-status')).toContainText('+100');
+  await expect(page.getByRole('button', { name: 'RETRY INVOICE EMAIL', exact: true })).toHaveCount(0);
+  await page.goto('/sample-connected-fixture.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  expect(calls.filter(call => call.path === '/functions/v1/sample-checkout').map(call => call.body.action)).toEqual(['checkout']);
 });
 
 test('connected service failure retains the bag and never falls back to browser invoices', async ({ page }) => {
@@ -244,6 +328,11 @@ test('a lost response replays the saved quote and billing after refresh and cata
   await expect(page.locator('.invoice-document')).toContainText('42 Original Sample Avenue');
   await expect(page.locator('.invoice-document')).toContainText('189.00');
   await expect(page).toHaveURL(new RegExp(`#/invoice/${invoiceId}$`));
+  await expect(page.locator('.invoice-reward-status')).toContainText('+100');
+  await page.goto('/sample-connected-fixture.html#/account');
+  await expect(page.locator('.sample-points-number')).toHaveText('100');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  expect(mock.ordersCreated()).toBe(1);
 });
 
 test('completing an in-flight sample consumes its items while retaining new bag additions', async ({ page }) => {

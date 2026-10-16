@@ -447,7 +447,7 @@ test("page navigation shows metallic monogram and product angle button row is re
   await expect(page.locator(".viewer-index")).toHaveText("RIGHT VIEW");
 });
 
-test("customer signup profile per-item demo points and account isolation", async ({
+test("customer signup profile per-item sample points and account isolation", async ({
   page,
 }) => {
   test.setTimeout(60_000); // This journey crosses multiple animated page transitions.
@@ -480,8 +480,10 @@ test("customer signup profile per-item demo points and account isolation", async
   await page
     .getByRole("link", { name: "View your dashboard", exact: true })
     .click();
-  await expect(page.locator(".points-number")).toHaveText("1,000");
-  await expect(page.locator(".tier-badge")).toHaveText("Bronze");
+  await expect(page.locator(".sample-points-number")).toHaveText("1,000");
+  await expect(page.locator(".sample-tier-badge")).toHaveText("Bronze");
+  await expect(page.locator(".points-number")).toHaveText("0");
+  await expect(page.locator(".tier-badge")).toHaveText("Member");
   await expect(
     page.getByText("Updated Member.", { exact: false }),
   ).toBeVisible();
@@ -498,7 +500,9 @@ test("customer signup profile per-item demo points and account isolation", async
   await expect(page.locator(".customer-error")).toContainText("incorrect");
   await page.getByLabel("Password", { exact: true }).fill("SamplePassword123");
   await page.getByRole("button", { name: "LOG IN", exact: true }).click();
-  await expect(page.locator(".points-number")).toHaveText("1,000");
+  await expect(page.locator(".sample-points-number")).toHaveText("1,000");
+  await expect(page.locator(".sample-tier-badge")).toHaveText("Bronze");
+  await expect(page.locator(".points-number")).toHaveText("0");
   await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
   await page.goto("/#/signup");
   await page.getByLabel("Full name", { exact: true }).fill("Another Member");
@@ -510,6 +514,8 @@ test("customer signup profile per-item demo points and account isolation", async
     .getByRole("button", { name: "CREATE ACCOUNT", exact: true })
     .click();
   await expect(page.locator(".points-number")).toHaveText("0");
+  await expect(page.locator(".sample-points-number")).toHaveCount(0);
+  await expect(page.locator(".sample-invoice-history")).toHaveCount(0);
 });
 test("customer language changes persist and account layout fits mobile", async ({
   page,

@@ -45,7 +45,33 @@ Never use a Supabase service-role/secret key here. Restart the development serve
 
 For a browser-only sample with no real email requests, build with `node scripts/build-sample.js --demo --out-dir .test-site`, or explicitly override both public settings with empty strings in `.env.local`. Local demo accounts do not send emails or claim that a mailbox has been verified.
 
-## 3. Add Resend for customer delivery when ready
+## 3. Use SendGrid for the any-customer sample
+
+For the current sample without a purchased domain, use SendGrid **Single Sender
+Verification** with an email inbox you control. Complete verification and confirm
+that SendGrid has authorized the account to send mail. Its trial/plan limits and
+recipient spam filtering still apply. Domain authentication is recommended for a
+public launch.
+
+In **Supabase → Authentication → Emails → SMTP Settings**, enable custom SMTP:
+
+| Setting | Value |
+| --- | --- |
+| Sender email | The exact email verified as a SendGrid Single Sender |
+| Sender name | `CROWNNETIC` |
+| Host | `smtp.sendgrid.net` |
+| Port | `587` (STARTTLS) |
+| Username | `apikey` — this literal word |
+| Password | A SendGrid API key with Mail Send permission, entered securely |
+
+Keep **Confirm email** enabled and keep the default confirmation-link template to
+match the website's current link mode. Set **Site URL** to a reachable storefront
+URL and test signup with two different customer inboxes. This SMTP setup sends
+Auth confirmations; the separate Edge Function and secrets in the
+[sample invoice guide](sample-checkout.md) send purchase invoices. Configuring
+one does not automatically configure the other.
+
+## 4. Add Resend for customer delivery when ready
 
 The built-in sender is limited to the project team's test recipients. To send confirmation messages to ordinary customer addresses, configure a suitable custom mail provider such as Resend. For Resend production delivery, add a domain you own, publish its required DNS records, wait for verification, and choose a sender on that verified domain. Resend's onboarding/test sender is not suitable for arbitrary customers.
 

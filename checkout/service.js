@@ -119,6 +119,8 @@ export function createCheckoutStore({ connected, getClient, getProducts, getUser
           customer: canonical.customer, lines: canonical.items, products,
           expectedTotal: canonical.expected_total_sen, createdAt: now(),
         }), email_status: "preview_only" };
+        order.reward_eligible = Boolean(who.user);
+        if (!who.user) order.points = 0;
       } catch (error) {
         if (["price_changed", "item_unavailable"].includes(error.code)) clearRequest(who.owner, canonical.request_id);
         throw error;

@@ -31,6 +31,9 @@
 .invoice-paper-note { border-top: 1px solid #d5d9ca; padding-top: 24px; margin: 12px 0 22px; font-size: 11px; color: #5f6858; line-height: 1.8; }
 .invoice-paper-footer { font-size: 9px; color: #6b735f; line-height: 1.6; }
 .invoice-actions { min-width: 0; display: grid; gap: 16px; }
+.invoice-reward-status { padding: 24px; border: 1px solid #53584b; border-radius: 13px; background: linear-gradient(135deg, #282b25, #121411); }
+.invoice-reward-status > strong { display: block; margin: 14px 0 8px; font-family: var(--display); font-size: 48px; font-weight: 500; line-height: 1; color: #ecece2; }
+.invoice-reward-status > p { font-size: 13px; line-height: 1.8; color: #cbd0c3; }
 .invoice-email-status { padding: 22px; border: 1px solid #414d40; border-radius: 13px; background: #141b15; }
 .invoice-email-status .small-label { color: #b9c6aa; }
 .invoice-email-status p { font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }

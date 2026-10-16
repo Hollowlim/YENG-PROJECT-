@@ -160,6 +160,31 @@ test("an invalid guest preview email cannot trap corrected retries in a saved re
   assert.equal(order.customer_email, "guest@example.com");
 });
 
+test("signed-in sample points are frozen by quantity and product override even without email delivery", async () => {
+  const f = fixture();
+  f.setCatalog([{ ...product, reward_points: 600 }]);
+  const order = await f.store.complete(input());
+  assert.equal(order.points, 1200);
+  assert.equal(order.items[0].reward_points, 600);
+  assert.equal(order.email_status, "preview_only");
+  f.setCatalog([{ ...product, reward_points: 0 }]);
+  const replay = await createCheckoutStore(f.deps).complete(input());
+  assert.equal(replay.id, order.id);
+  assert.equal(replay.points, 1200);
+  assert.equal((await f.store.list()).length, 1);
+});
+
+test("guest invoices earn zero account points and cannot transfer awards by signing in", async () => {
+  const f = fixture();
+  f.setUser(null);
+  const order = await f.store.complete(input());
+  assert.equal(order.points, 0);
+  f.setUser(a);
+  assert.deepEqual(await f.store.list(), []);
+  assert.equal(await f.store.get(order.id), null);
+  assert.equal((await f.store.complete(input())).points, 200);
+});
+
 test("a late definitive failure cannot erase a different account's pending request", async () => {
   let failA;
   const f = fixture({ connected: true, getClient: async () => ({ functions: { invoke: (_name, { body }) => new Promise(resolve => {

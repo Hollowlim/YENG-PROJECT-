@@ -1,12 +1,15 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { CheckoutError } from "../../../checkout/invoice.js";
 import { createSampleCheckoutHandler } from "./handler.js";
+import { createInvoiceEmailSender } from "./email-provider.js";
 
 // All secrets stay in the Edge Function runtime. No VITE_ secret is read here.
 const projectUrl = Deno.env.get("SUPABASE_URL") || "";
 const publicKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
 const serverKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY") || "";
 const resendKey = Deno.env.get("RESEND_API_KEY") || "";
+const sendgridKey = Deno.env.get("SENDGRID_API_KEY") || "";
+const emailProvider = (Deno.env.get("INVOICE_EMAIL_PROVIDER") || "resend").trim().toLowerCase();
 const clientOptions = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 // The project does not generate database TypeScript types yet. Retaining the
 // client's generic defaults avoids inferring an empty schema from ReturnType.
@@ -19,7 +22,8 @@ function database() {
 }
 
 function storageError(error: { code?: string; message?: string }) {
-  if (["42P01", "42883", "PGRST200", "PGRST202", "PGRST205"].includes(error.code || "")) throw new CheckoutError("Sample invoice storage is not ready. Apply supabase/005_sample_checkout.sql in Supabase.", 503, "setup_required");
+  if (["42703", "PGRST204"].includes(error.code || "")) throw new CheckoutError("Sample invoice rewards and email setup is not ready. Apply supabase/006_sample_rewards.sql in Supabase.", 503, "setup_required");
+  if (["42P01", "42883", "PGRST200", "PGRST202", "PGRST205"].includes(error.code || "")) throw new CheckoutError("Sample invoice storage is not ready. Apply supabase/006_sample_rewards.sql in Supabase.", 503, "setup_required");
   if (/^Daily sample invoice limit reached\./.test(error.message || "")) throw new CheckoutError("Daily sample invoice limit reached. Please try again tomorrow.", 429, "sample_limit_reached");
   // Provider/database messages may contain request details. Never return or log
   // their bodies, access tokens, API keys or privileged connection information.
@@ -35,12 +39,12 @@ async function rpc(name: string, args: Record<string, unknown>) {
 
 const repository = {
   async getByRequest(userId: string, requestId: string) {
-    const { data, error } = await database().from("sample_orders").select("*").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
+    const { data, error } = await database().from("sample_orders").select("*,points").eq("user_id", userId).eq("request_id", requestId).maybeSingle();
     if (error) storageError(error);
     return data;
   },
   async getById(userId: string, id: string) {
-    const { data, error } = await database().from("sample_orders").select("*").eq("user_id", userId).eq("id", id).maybeSingle();
+    const { data, error } = await database().from("sample_orders").select("*,points").eq("user_id", userId).eq("id", id).maybeSingle();
     if (error) storageError(error);
     return data;
   },
@@ -52,17 +56,23 @@ const repository = {
     const { data, error } = await db.from("sample_orders")
       .update({ email_status: status, email_error: errorMessage })
       .eq("id", id).in("email_status", ["pending", "not_configured", "restricted", "failed"])
-      .select("*").maybeSingle();
+      .eq("email_retry_blocked", false).select("*,points").maybeSingle();
     if (error) storageError(error);
     if (data) return data;
     // An accepted send or an active worker's claim wins over an unavailable
     // configuration update from another request.
-    const latest = await db.from("sample_orders").select("*").eq("id", id).single();
+    const latest = await db.from("sample_orders").select("*,points").eq("id", id).single();
     if (latest.error) storageError(latest.error);
     return latest.data;
   },
   claimEmail(id: string) {
     return rpc("claim_sample_invoice_email", { p_order_id: id });
+  },
+  claimEmailOnce(id: string) {
+    return rpc("claim_sample_invoice_email_once", { p_order_id: id });
+  },
+  markEmailUnknown(id: string, claimId: string, errorMessage: string) {
+    return rpc("mark_sample_invoice_email_unknown", { p_order_id: id, p_claim_id: claimId, p_error: errorMessage });
   },
   finishEmail(id: string, claimId: string, providerId: string | null, errorMessage: string) {
     return rpc("finish_sample_invoice_email", { p_order_id: id, p_claim_id: claimId, p_provider_id: providerId, p_error: errorMessage });
@@ -83,25 +93,17 @@ const handler = createSampleCheckoutHandler({
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) return [];
     const { data, error } = await database().from("products")
-      .select("id,name,price_sen,published,variants:product_variants(size,stock)")
+      .select("id,name,price_sen,reward_points,published,variants:product_variants(size,stock)")
       .in("id", uniqueIds).eq("published", true);
     if (error) storageError(error);
     return data || [];
   },
   repository,
-  async sendEmail(message: { from: string; to: string[]; subject: string; html: string; text: string; idempotencyKey: string }) {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { authorization: `Bearer ${resendKey}`, "content-type": "application/json", "idempotency-key": message.idempotencyKey },
-      body: JSON.stringify({ from: message.from, to: message.to, subject: message.subject, html: message.html, text: message.text }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!response.ok) throw new Error("The email provider did not accept the request.");
-    const accepted = await response.json();
-    if (typeof accepted?.id !== "string") throw new Error("The email provider did not return an acceptance ID.");
-    return { id: accepted.id };
-  },
+  sendEmail: createInvoiceEmailSender({ provider: emailProvider, sendgridKey, resendKey }),
   config: {
+    provider: emailProvider,
+    sendgridConfigured: Boolean(sendgridKey.trim()),
+    fromEmail: Deno.env.get("INVOICE_FROM_EMAIL") || "",
     allowedOrigins: (Deno.env.get("INVOICE_ALLOWED_ORIGINS") || "").split(",").map((origin) => origin.trim()).filter(Boolean),
     resendConfigured: Boolean(resendKey.trim()),
     testRecipient: Deno.env.get("INVOICE_TEST_RECIPIENT") || "",

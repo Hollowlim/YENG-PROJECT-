@@ -503,11 +503,11 @@ document.addEventListener("submit", async (event) => {
       const outcome = form.querySelector("#sample-payment-result").value;
       if (outcome !== "success") throw Error(`The sample payment was ${outcome}. Your bag is unchanged. No invoice or email was created.`);
       const submittedBag = structuredClone(bag);
-      const rewardProducts = structuredClone(products);
+      const submittedProducts = structuredClone(products);
       const order = await checkoutStore.complete({
         outcome,
         items: submittedBag.map(line => ({ product_id: line.productId, size: line.size, quantity: line.quantity })),
-        expected_total_sen: subtotal(submittedBag, rewardProducts),
+        expected_total_sen: subtotal(submittedBag, submittedProducts),
         customer: {
           name: `${form.querySelector("#first").value.trim()} ${form.querySelector("#last").value.trim()}`,
           email: form.querySelector("#email").value,
@@ -516,11 +516,8 @@ document.addEventListener("submit", async (event) => {
           country: form.querySelector("#country").value,
         },
       });
-      if (!connected) {
-        try {
-          await customers.awardDemo(order.items.map(item => ({ productId: item.product_id, size: item.size, quantity: item.quantity })), rewardProducts, order.reference, order.user_id);
-        } catch { /* A saved sample invoice remains available if demo reward storage fails. */ }
-      }
+      // The saved invoice contains its sample award. Reopening or retrying it
+      // must never add another award to the real membership ledger.
       if (!completedSampleRequests.has(order.request_id)) {
         const previousBag = bag;
         bag = consumeInvoiceBag(bag, order.items);
