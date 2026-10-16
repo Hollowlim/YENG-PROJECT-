@@ -157,6 +157,17 @@
   font-size: 10px;
   color: var(--muted);
 }
+.purchase-history { margin-top: 48px; }
+.purchase-history h2 { font: 600 34px var(--display); }
+.customer-order { border: 1px solid var(--line); border-radius: 14px; padding: 24px; margin: 18px 0; overflow-wrap: anywhere; }
+.customer-order p { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.order-status { border: 1px solid var(--line); border-radius: 20px; padding: 6px 12px; font-size: 12px; }
+.order-items { list-style: none; padding: 0; margin: 16px 0; }
+.order-items li, .order-total { display: flex; justify-content: space-between; gap: 18px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.order-items strong { font-size: 13px; }
+.points-change { flex-shrink: 0; }
+.history-item > div { min-width: 0; overflow-wrap: anywhere; }
+.history-reason { max-width: 65ch; line-height: 1.7; }
 .profile-link {
   display: inline-flex;
   align-items: center;

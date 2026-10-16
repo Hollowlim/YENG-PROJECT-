@@ -1,0 +1,140 @@
+import { test, expect } from './fixtures.js';
+
+test('admin navigation preserves Product Room and exposes customer tools', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/index.html#/login');
+  await page.getByLabel('Email address or username', { exact: true }).fill('admin@123');
+  await page.getByLabel('Password', { exact: true }).fill('admin@123');
+  await page.getByRole('button', { name: 'LOG IN', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'THE PRODUCT ROOM.' })).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Admin navigation' });
+  await expect(nav).toBeVisible();
+  await nav.getByRole('link', { name: 'Customers', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'YOUR CUSTOMERS.' })).toBeVisible();
+});
+
+async function signup(page, name = 'Jamie Rain', email = 'jamie@example.com') {
+  await page.goto('/index.html#/signup');
+  await page.getByLabel('Full name', { exact: true }).fill(name);
+  await page.getByLabel('Email address', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill('SamplePassword123');
+  await page.getByRole('button', { name: 'CREATE ACCOUNT', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'YOUR INNER CIRCLE.' })).toBeVisible();
+}
+async function adminLogin(page) {
+  await page.goto('/index.html#/login');
+  await page.getByLabel('Email address or username', { exact: true }).fill('admin@123');
+  await page.getByLabel('Password', { exact: true }).fill('admin@123');
+  await page.getByRole('button', { name: 'LOG IN', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'THE PRODUCT ROOM.' })).toBeVisible();
+}
+const nav = page => page.getByRole('navigation', { name: 'Admin navigation' });
+
+test('admin records a sale, adjusts points, tracks delivery and refunds once; customers see only their own histories', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await signup(page);
+  await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
+  await adminLogin(page);
+  await nav(page).getByRole('link', { name: 'Customers', exact: true }).click();
+  await page.getByLabel('Search customers', { exact: true }).fill('missing@example.com');
+  await expect(page.getByText('No customers match your search.', { exact: true })).toBeVisible();
+  await page.getByLabel('Search customers', { exact: true }).fill('jamie@example.com');
+  await page.getByRole('link', { name: 'Jamie Rain', exact: true }).click();
+  const customerId = new URLSearchParams(page.url().split('?')[1]).get('customer');
+  expect(customerId).toBeTruthy();
+  await page.getByRole('link', { name: 'RECORD PAID SALE' }).click();
+  const sale = page.locator('#admin-record-sale');
+  await expect(sale.getByLabel('Customer', { exact: true })).toHaveValue(customerId);
+  await sale.getByLabel('Receipt / payment reference', { exact: true }).fill('IG-001');
+  await sale.getByLabel('Product', { exact: true }).selectOption('core-heavyweight-tee');
+  await sale.getByLabel('Size', { exact: true }).selectOption('M');
+  await sale.getByLabel('Quantity', { exact: true }).fill('2');
+  await sale.getByRole('button', { name: 'ADD ANOTHER ITEM' }).click();
+  await sale.getByLabel('Product', { exact: true }).nth(1).selectOption('signature-cap');
+  await sale.getByLabel('Size', { exact: true }).nth(1).selectOption('ONE SIZE');
+  await expect(sale.locator('[data-sale-total]')).toHaveText('RM 467.00');
+  await expect(sale.locator('[data-sale-points]')).toHaveText('300');
+  await sale.getByLabel('I verified that payment was received.', { exact: true }).check();
+  await sale.getByRole('button', { name: 'RECORD PAID SALE', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'IG-001', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'IG-001', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'IG-001', exact: true })).toBeVisible();
+  await page.getByLabel('Fulfillment status', { exact: true }).selectOption('shipped');
+  await page.getByLabel('Tracking number (optional)', { exact: true }).fill('MY-TRACK-123');
+  await page.getByRole('button', { name: 'SAVE DELIVERY UPDATE', exact: true }).click();
+  await expect(page.getByLabel('Tracking number (optional)', { exact: true })).toHaveValue('MY-TRACK-123');
+  await page.reload();
+  await expect(page.getByLabel('Fulfillment status', { exact: true })).toHaveValue('shipped');
+  await nav(page).getByRole('link', { name: 'Points', exact: true }).click();
+  let points = page.locator('#admin-adjust-points');
+  await points.getByLabel('Customer', { exact: true }).selectOption(customerId);
+  await points.getByLabel('Number of points', { exact: true }).fill('900');
+  await points.getByLabel('Reason for adjustment', { exact: true }).fill('Launch bonus');
+  await points.getByRole('button', { name: 'SAVE POINTS ADJUSTMENT' }).click();
+  await expect(page.getByText('Launch bonus', { exact: true })).toBeVisible();
+  points = page.locator('#admin-adjust-points');
+  await points.getByLabel('Customer', { exact: true }).selectOption(customerId);
+  await points.getByLabel('Adjustment', { exact: true }).selectOption('remove');
+  await points.getByLabel('Number of points', { exact: true }).fill('50');
+  await points.getByLabel('Reason for adjustment', { exact: true }).fill('Points correction');
+  await points.getByRole('button', { name: 'SAVE POINTS ADJUSTMENT' }).click();
+  await expect(page.getByText('Points correction', { exact: true })).toBeVisible();
+  await nav(page).getByRole('link', { name: 'Customers', exact: true }).click();
+  await page.getByRole('link', { name: 'Jamie Rain', exact: true }).click();
+  await expect(page.locator('.admin-detail-heading .admin-tier')).toHaveText('Bronze');
+  await nav(page).getByRole('link', { name: 'Orders', exact: true }).click();
+  await page.getByRole('link', { name: 'IG-001', exact: true }).click();
+  await page.getByLabel('Reason for refund', { exact: true }).fill('Full return approved');
+  await page.getByLabel('I have completed the refund outside this website.', { exact: true }).check();
+  await page.getByRole('button', { name: 'RECORD REFUND & REVERSE POINTS', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'REFUND RECORDED.', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'RECORD REFUND & REVERSE POINTS', exact: true })).toHaveCount(0);
+  await nav(page).getByRole('link', { name: 'Activity', exact: true }).click();
+  await expect(page.locator('.admin-activity-item')).toHaveCount(5);
+  await nav(page).getByRole('link', { name: 'Overview', exact: true }).click();
+  await expect(page.locator('.admin-stat').filter({ hasText: 'PAID SALES' })).toContainText('RM 0.00');
+  await page.screenshot({ path: 'test-results/admin-overview.png', fullPage: true });
+  await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
+  await page.goto('/index.html#/login');
+  await page.getByLabel('Email address or username', { exact: true }).fill('jamie@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('SamplePassword123');
+  await page.getByRole('button', { name: 'LOG IN', exact: true }).click();
+  await expect(page.locator('.points-number')).toHaveText('850');
+  await expect(page.locator('.tier-badge')).toHaveText('Member');
+  const history = page.locator('.purchase-history');
+  await expect(history).toContainText('IG-001');
+  await expect(history).toContainText('Core Heavyweight Tee');
+  await expect(history).toContainText('RM 467.00');
+  await expect(history).toContainText('Refunded');
+  await expect(history).toContainText('MY-TRACK-123');
+  await expect(page.locator('.history-list')).toContainText('Launch bonus');
+  await expect(page.locator('.history-list')).toContainText('-300');
+  await page.reload();
+  await expect(page.locator('.points-number')).toHaveText('850');
+  await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
+  await signup(page, 'Other Member', 'other@example.com');
+  await expect(page.locator('.points-number')).toHaveText('0');
+  await expect(page.locator('.purchase-history')).not.toContainText('IG-001');
+  await expect(page.locator('.history-list')).toHaveCount(0);
+  await page.goto('/index.html#/admin?view=customers');
+  await expect(page.getByRole('heading', { name: 'ADMIN SIGN IN.' })).toBeVisible();
+});
+
+test('admin customer and order tools fit mobile and preserve state across tabs', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signup(page);
+  await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
+  await adminLogin(page);
+  for (const view of ['Customers', 'Orders', 'Points', 'Activity', 'Overview']) {
+    await nav(page).getByRole('link', { name: view, exact: true }).click();
+    await expect(page.locator('[data-admin-portal]')).toBeVisible();
+    await expect(page.locator('#page-loader')).toBeHidden();
+    const layout = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth, offenders: [...document.querySelectorAll('main *')].map(node => ({ tag: node.tagName, cls: node.className, x: node.getBoundingClientRect().x, right: node.getBoundingClientRect().right })).filter(rect => rect.right > innerWidth + 1).slice(0, 12) }));
+    if (layout.scroll > layout.width) await page.screenshot({ path: `test-results/admin-overflow-${view}.png`, fullPage: true });
+    expect(layout.scroll, `${view}: ${JSON.stringify(layout)}`).toBeLessThanOrEqual(layout.width);
+  }
+  await page.screenshot({ path: 'test-results/admin-mobile.png', fullPage: true });
+});

@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as customer from "../customer/model.js";
+test("negative balances stay Member with finite progress toward Bronze", () => {
+  const tier = customer.loyaltyTier(-250);
+  assert.equal(tier.name, "Member");
+  assert.equal(tier.next.name, "Bronze");
+  assert.equal(tier.progress, 0);
+});
 test("tiers switch at the exact requested thresholds", () => {
   for (const [points, tier] of [
     [0, "Member"],

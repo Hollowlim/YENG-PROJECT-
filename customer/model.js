@@ -5,8 +5,8 @@ export function loyaltyTier(points) {
     { name: "Gold", threshold: 5000 },
     { name: "Platinum", threshold: 10000 },
   ];
-  const index = tiers.findLastIndex((t) => points >= t.threshold);
-  const current = tiers[Math.max(0, index)],
+  const index = Math.max(0, tiers.findLastIndex((t) => points >= t.threshold));
+  const current = tiers[index],
     next = tiers[index + 1];
   return {
     ...current,

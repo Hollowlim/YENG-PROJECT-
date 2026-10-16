@@ -11,6 +11,27 @@ let locale = Object.hasOwn(
   ? localStorage.getItem("crownetic.language")
   : "en";
 const copy = {
+  "YOUR PURCHASE HISTORY.": ["SEJARAH PEMBELIAN ANDA.", "你的购买记录。", "உங்கள் கொள்முதல் வரலாறு."],
+  "Sample sales recorded in this browser only.": ["Jualan contoh direkodkan dalam pelayar ini sahaja.", "模拟销售仅记录在此浏览器中。", "மாதிரி விற்பனைகள் இந்த உலாவியில் மட்டுமே பதிவாகும்."],
+  "No recorded purchases yet.": ["Belum ada pembelian direkodkan.", "暂无购买记录。", "இன்னும் கொள்முதல்கள் பதிவாகவில்லை."],
+  "No points activity yet.": ["Belum ada aktiviti mata.", "暂无积分变动。", "இன்னும் புள்ளி நடவடிக்கைகள் இல்லை."],
+  "Refund reversal": ["Pembalikan mata bayaran balik", "退款积分冲回", "பணத்திருப்பத்திற்கான புள்ளி மீட்பு"],
+  "Points adjustment": ["Pelarasan mata", "积分调整", "புள்ளிகள் சரிசெய்தல்"],
+  "Sample entry": ["Rekod contoh", "模拟记录", "மாதிரி பதிவு"],
+  "Paid": ["Dibayar", "已付款", "செலுத்தப்பட்டது"],
+  "Refunded": ["Dibayar balik", "已退款", "பணம் திருப்பப்பட்டது"],
+  "Size": ["Saiz", "尺码", "அளவு"],
+  "Quantity": ["Kuantiti", "数量", "எண்ணிக்கை"],
+  "each": ["setiap satu", "每件", "ஒன்றுக்கு"],
+  "Fulfillment": ["Pemenuhan pesanan", "履约状态", "ஆர்டர் நிறைவேற்றம்"],
+  "Tracking number": ["Nombor penjejakan", "物流单号", "கண்காணிப்பு எண்"],
+  "Refund reason": ["Sebab bayaran balik", "退款原因", "பணத்திருப்பக் காரணம்"],
+  "pending": ["belum diproses", "待处理", "நிலுவையில்"],
+  "packed": ["dibungkus", "已打包", "பொதியிடப்பட்டது"],
+  "shipped": ["dihantar", "已发货", "அனுப்பப்பட்டது"],
+  "delivered": ["diserahkan", "已送达", "வழங்கப்பட்டது"],
+  "collected": ["diambil", "已取货", "பெறப்பட்டது"],
+
   "Confirm your email using the link we send before signing in.": [
     "Sahkan e-mel anda melalui pautan yang kami hantar sebelum log masuk.",
     "登录前，请使用我们发送的链接确认邮箱。",

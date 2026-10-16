@@ -2,23 +2,11 @@ import { connected, supabase } from "../catalog.js";
 import { createEmailAuth } from "./email-auth.js";
 import { emailVerificationMode } from "../site-config.js";
 import { hashPassword, verifyPassword, itemPoints } from "./model.js";
+import { loadCustomers as load, saveCustomers as save } from "./storage.js";
+import { readCustomerOrders } from "./orders.js";
 export const emailAuth = createEmailAuth({ getClient: supabase, storage: sessionStorage });
 export const usesEmailCode = (import.meta.env.VITE_EMAIL_VERIFICATION_MODE ?? emailVerificationMode) === "code";
-const key = "crownetic.customers.v1",
-  session = "crownetic.customer.session";
-function load() {
-  try {
-    const v = JSON.parse(localStorage.getItem(key) || "{}");
-    return v.version === 1 && Array.isArray(v.users) && Array.isArray(v.events)
-      ? v
-      : { version: 1, users: [], events: [] };
-  } catch {
-    return { version: 1, users: [], events: [] };
-  }
-}
-function save(data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+const session = "crownetic.customer.session";
 const publicUser = ({ password, ...user }) => user;
 export const customers = {
   async current() {
@@ -62,6 +50,8 @@ export const customers = {
     if (password.length < 8)
       throw Error("Use at least 8 characters for your password.");
     if (connected) return emailAuth.signup({ name, email, password });
+    // Hash first, then read shared storage so concurrent admin changes are retained.
+    const passwordRecord = await hashPassword(password);
     const data = load();
     if (data.users.some((u) => u.email === email))
       throw Error("An account with this email already exists.");
@@ -69,7 +59,7 @@ export const customers = {
       id: crypto.randomUUID(),
       name,
       email,
-      password: await hashPassword(password),
+      password: passwordRecord,
       phone: "",
       address: "",
       created_at: new Date().toISOString(),
@@ -131,6 +121,18 @@ export const customers = {
     return load()
       .events.filter((e) => e.user_id === user.id)
       .reverse();
+  },
+  async orders() {
+    const user = await this.current();
+    if (!user) return [];
+    if (connected) {
+      const db = await supabase();
+      return readCustomerOrders(db, user.id);
+    }
+    return load().orders
+      .filter((order) => order.user_id === user.id)
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+      .map(({ request_id, request_payload, ...order }) => order);
   },
   async awardDemo(lines, products, reference) {
     if (connected) return 0;

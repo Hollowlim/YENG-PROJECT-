@@ -1,5 +1,5 @@
 -- CROWNETIC: complete, rerunnable setup for this project's Supabase schema.
--- Run this whole file in SQL Editor as postgres instead of rerunning 001/002/003.
+-- Run this whole file in SQL Editor as postgres instead of running 001/002/003/004.
 -- Existing rows are preserved. Named application policies are refreshed atomically.
 -- The product-images bucket is public; uploaded product photos are public assets.
 begin;
@@ -214,6 +214,331 @@ drop policy if exists "Read product photos" on storage.objects;
 create policy "Read product photos" on storage.objects
   for select to anon, authenticated using (bucket_id = 'product-images');
 
+-- BEGIN ADMIN PORTAL (004)
+
+create table if not exists public.orders (
+  id uuid primary key default gen_random_uuid(),
+  reference text not null check (length(trim(reference)) between 1 and 120),
+  user_id uuid not null references auth.users(id),
+  channel text not null check (channel in ('instagram', 'offline', 'website')),
+  status text not null default 'paid' check (status in ('paid', 'refunded')),
+  total_sen integer not null check (total_sen >= 0),
+  points integer not null check (points >= 0),
+  item_count integer not null check (item_count > 0),
+  created_at timestamptz not null default now(),
+  created_by uuid references auth.users(id) on delete set null,
+  fulfillment_status text not null default 'unfulfilled'
+    check (fulfillment_status in ('unfulfilled', 'processing', 'shipped', 'delivered')),
+  tracking_number text not null default '' check (length(tracking_number) <= 200),
+  refund_reason text not null default '' check (length(refund_reason) <= 500),
+  refunded_at timestamptz
+);
+create unique index if not exists orders_reference_unique on public.orders (lower(reference));
+create index if not exists orders_customer_created on public.orders (user_id, created_at desc);
+create table if not exists public.order_items (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references public.orders(id) on delete cascade,
+  product_id uuid references public.products(id) on delete set null,
+  name text not null,
+  size text not null,
+  quantity integer not null check (quantity between 1 and 9999),
+  unit_price_sen integer not null check (unit_price_sen >= 0),
+  reward_points integer not null check (reward_points between 0 and 100000)
+);
+create index if not exists order_items_order on public.order_items (order_id);
+create table if not exists public.admin_activity (
+  id uuid primary key default gen_random_uuid(),
+  action text not null check (action in ('sale_recorded', 'points_adjusted', 'order_refunded', 'fulfillment_updated')),
+  actor_id uuid references auth.users(id) on delete set null,
+  actor_email text not null default '',
+  user_id uuid references auth.users(id) on delete set null,
+  customer_email text not null default '',
+  reference text not null default '',
+  summary text not null,
+  created_at timestamptz not null default now(),
+  request_id uuid unique,
+  request_payload jsonb,
+  result_id uuid,
+  check ((request_id is null and request_payload is null)
+    or (request_id is not null and request_payload is not null))
+);
+create index if not exists admin_activity_created on public.admin_activity (created_at desc);
+
+alter table public.loyalty_events
+  add column if not exists event_type text not null default 'purchase',
+  add column if not exists reason text not null default '',
+  add column if not exists created_by uuid references auth.users(id) on delete set null,
+  add column if not exists order_id uuid references public.orders(id);
+-- Replace only the checks created by this project's earlier rewards migration.
+-- Signed adjustments/refunds are ledger entries; existing purchases remain unchanged.
+alter table public.loyalty_events
+  drop constraint if exists loyalty_events_points_check,
+  drop constraint if exists loyalty_events_item_count_check,
+  drop constraint if exists loyalty_events_event_type_check,
+  drop constraint if exists loyalty_events_reason_check,
+  drop constraint if exists loyalty_events_event_shape_check;
+alter table public.loyalty_events
+  add constraint loyalty_events_item_count_check check (item_count >= 0),
+  add constraint loyalty_events_event_type_check check (event_type in ('purchase', 'adjustment', 'refund')),
+  add constraint loyalty_events_reason_check check (length(reason) <= 500),
+  add constraint loyalty_events_event_shape_check check (
+    (event_type = 'purchase' and points >= 0 and item_count > 0)
+    or (event_type = 'adjustment' and points <> 0 and item_count = 0)
+    or (event_type = 'refund' and points <= 0)
+  );
+create unique index if not exists loyalty_events_order_type_unique
+  on public.loyalty_events (order_id, event_type)
+  where order_id is not null and event_type in ('purchase', 'refund');
+
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.admin_activity enable row level security;
+drop policy if exists "Customers or admins read orders" on public.orders;
+create policy "Customers or admins read orders" on public.orders for select to authenticated
+  using (user_id = (select auth.uid()) or public.is_catalog_admin());
+drop policy if exists "Customers or admins read order items" on public.order_items;
+create policy "Customers or admins read order items" on public.order_items for select to authenticated
+  using (exists (select 1 from public.orders o where o.id = order_id
+    and (o.user_id = (select auth.uid()) or public.is_catalog_admin())));
+drop policy if exists "Admins read activity" on public.admin_activity;
+create policy "Admins read activity" on public.admin_activity for select to authenticated
+  using (public.is_catalog_admin());
+revoke all on public.orders, public.order_items, public.admin_activity from public, anon, authenticated;
+grant select on public.orders, public.order_items, public.admin_activity to authenticated;
+-- Customer profile and reward SELECT policies remain restricted to their owner.
+revoke insert, update, delete on public.loyalty_events from public, anon, authenticated;
+
+create or replace function public.admin_portal_snapshot()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare result jsonb;
+begin
+  if not public.is_catalog_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  with customers as (
+    select u.id, u.email,
+      coalesce(nullif(trim(p.display_name), ''), nullif(left(trim(u.raw_user_meta_data->>'name'), 80), ''), split_part(u.email, '@', 1)) as name,
+      coalesce(p.phone, '') as phone, coalesce(p.address, '') as address, u.created_at,
+      coalesce((select sum(e.points) from public.loyalty_events e where e.user_id = u.id), 0) as points,
+      coalesce((select sum(o.total_sen) from public.orders o where o.user_id = u.id and o.status = 'paid'), 0) as total_spent_sen,
+      (select count(*) from public.orders o where o.user_id = u.id) as order_count,
+      (select max(o.created_at) from public.orders o where o.user_id = u.id and o.status = 'paid') as last_purchase_at
+    from auth.users u left join public.customer_profiles p on p.user_id = u.id
+    where nullif(trim(u.email), '') is not null and u.email_confirmed_at is not null
+      and not exists (select 1 from public.admin_users a where a.user_id = u.id)
+  ), order_data as (
+    select to_jsonb(o) || jsonb_build_object(
+      'customer_name', coalesce(nullif(trim(p.display_name), ''), nullif(left(trim(u.raw_user_meta_data->>'name'), 80), ''), split_part(u.email, '@', 1)),
+      'customer_email', u.email,
+      'items', coalesce((select jsonb_agg(to_jsonb(i) order by i.name, i.size, i.id)
+        from public.order_items i where i.order_id = o.id), '[]'::jsonb)
+    ) as data, o.created_at, o.id
+    from public.orders o join auth.users u on u.id = o.user_id
+      left join public.customer_profiles p on p.user_id = o.user_id
+  ), event_data as (
+    select to_jsonb(e) || jsonb_build_object(
+      'customer_name', coalesce(nullif(trim(p.display_name), ''), nullif(left(trim(u.raw_user_meta_data->>'name'), 80), ''), split_part(u.email, '@', 1)),
+      'customer_email', u.email
+    ) as data, e.created_at, e.id
+    from public.loyalty_events e join auth.users u on u.id = e.user_id
+      left join public.customer_profiles p on p.user_id = e.user_id
+  ), activity_data as (
+    select a.id, a.action, a.actor_email, a.customer_email, a.reference, a.summary, a.created_at
+    from public.admin_activity a
+  )
+  select jsonb_build_object(
+    'customers', coalesce((select jsonb_agg(to_jsonb(c) order by c.created_at desc, c.id) from customers c), '[]'::jsonb),
+    'orders', coalesce((select jsonb_agg(o.data order by o.created_at desc, o.id) from order_data o), '[]'::jsonb),
+    'events', coalesce((select jsonb_agg(e.data order by e.created_at desc, e.id) from event_data e), '[]'::jsonb),
+    'activity', coalesce((select jsonb_agg(to_jsonb(a) order by a.created_at desc, a.id) from activity_data a), '[]'::jsonb)
+  ) into result;
+  return result;
+end;
+$$;
+
+create or replace function public.admin_record_sale(sale_data jsonb)
+returns uuid language plpgsql security definer set search_path = '' as $$
+<<sale>>
+declare
+  request_id uuid; customer_id uuid; sale_ref text; sale_channel text; payload jsonb;
+  previous public.admin_activity%rowtype; customer_email text; actor_email text;
+  order_id uuid := gen_random_uuid(); entry jsonb; product_id uuid; variant_size text;
+  product_name text; price integer; per_item integer; qty integer;
+  total bigint := 0; points_total bigint := 0; quantity_total bigint := 0;
+begin
+  if not public.is_catalog_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  request_id := (sale_data->>'request_id')::uuid;
+  customer_id := (sale_data->>'user_id')::uuid;
+  sale_ref := trim(sale_data->>'reference');
+  sale_channel := sale_data->>'channel';
+  if request_id is null or customer_id is null then raise exception 'Customer and request ID are required'; end if;
+  if sale_ref is null or length(sale_ref) not between 1 and 120 then raise exception 'Reference must contain 1 to 120 characters'; end if;
+  if sale_channel is null or sale_channel not in ('instagram', 'offline', 'website') then raise exception 'Invalid sales channel'; end if;
+  if jsonb_typeof(sale_data->'items') is distinct from 'array' then raise exception 'Items are required'; end if;
+  if jsonb_array_length(sale_data->'items') not between 1 and 100 then raise exception 'Record between 1 and 100 items'; end if;
+  payload := jsonb_build_object('user_id', customer_id, 'reference', lower(sale_ref), 'channel', sale_channel, 'items', sale_data->'items');
+  perform pg_advisory_xact_lock(hashtextextended('crownetic.admin.request:' || request_id::text, 0));
+  select * into previous from public.admin_activity a where a.request_id = sale.request_id;
+  if found then
+    if previous.action <> 'sale_recorded' or previous.request_payload <> payload then raise exception 'Request ID was already used for a different action'; end if;
+    return previous.result_id;
+  end if;
+  select u.email into customer_email from auth.users u
+    where u.id = customer_id and u.email_confirmed_at is not null and nullif(trim(u.email), '') is not null
+      and not exists (select 1 from public.admin_users a where a.user_id = u.id)
+    for update of u;
+  if not found then raise exception 'Select a verified customer account'; end if;
+  if exists (select 1 from public.orders o where lower(o.reference) = lower(sale_ref)) then raise exception 'This sale reference is already recorded'; end if;
+  select u.email into actor_email from auth.users u where u.id = auth.uid();
+  insert into public.orders(id, reference, user_id, channel, total_sen, points, item_count, created_by)
+    values(order_id, sale_ref, customer_id, sale_channel, 0, 0, 1, auth.uid());
+  for entry in select * from jsonb_array_elements(sale_data->'items') loop
+    if coalesce(entry->>'quantity', '') !~ '^[1-9][0-9]{0,3}$' then raise exception 'Quantity must be an integer from 1 to 9999'; end if;
+    qty := (entry->>'quantity')::integer;
+    product_id := (entry->>'product_id')::uuid;
+    variant_size := entry->>'size';
+    select p.name, p.price_sen, p.reward_points into product_name, price, per_item
+      from public.products p join public.product_variants v on v.product_id = p.id
+      where p.id = sale.product_id and v.size = variant_size for share of p, v;
+    if not found then raise exception 'Select an existing product and size'; end if;
+    if exists (select 1 from public.order_items i where i.order_id = sale.order_id and i.product_id = sale.product_id and i.size = variant_size) then raise exception 'Combine duplicate product sizes into one item'; end if;
+    total := total + qty * price::bigint;
+    points_total := points_total + qty * per_item::bigint;
+    quantity_total := quantity_total + qty;
+    if total > 2147483647 or points_total > 2147483647 or quantity_total > 2147483647 then raise exception 'Sale total is too large'; end if;
+    insert into public.order_items(order_id, product_id, name, size, quantity, unit_price_sen, reward_points)
+      values(order_id, product_id, product_name, variant_size, qty, price, per_item);
+  end loop;
+  update public.orders o set total_sen = total::integer, points = points_total::integer, item_count = quantity_total::integer where o.id = order_id;
+  insert into public.loyalty_events(event_ref, user_id, points, item_count, event_type, created_by, order_id)
+    values('order-purchase:' || order_id::text, customer_id, points_total::integer, quantity_total::integer, 'purchase', auth.uid(), order_id);
+  insert into public.admin_activity(action, actor_id, actor_email, user_id, customer_email, reference, summary, request_id, request_payload, result_id)
+    values('sale_recorded', auth.uid(), coalesce(actor_email, ''), customer_id, customer_email, sale_ref,
+      'Recorded ' || sale_channel || ' sale: ' || quantity_total::text || ' item(s), ' || points_total::text || ' points', request_id, payload, order_id);
+  return order_id;
+end;
+$$;
+
+create or replace function public.admin_adjust_points(adjustment_data jsonb)
+returns uuid language plpgsql security definer set search_path = '' as $$
+<<adjustment>>
+declare
+  request_id uuid; customer_id uuid; delta integer; note text; payload jsonb;
+  previous public.admin_activity%rowtype; customer_email text; actor_email text;
+  balance bigint; event_id uuid := gen_random_uuid();
+begin
+  if not public.is_catalog_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  request_id := (adjustment_data->>'request_id')::uuid;
+  customer_id := (adjustment_data->>'user_id')::uuid;
+  if coalesce(adjustment_data->>'points', '') !~ '^-?[0-9]+$' then raise exception 'Points must be an integer'; end if;
+  if length(adjustment_data->>'points') > 7 then raise exception 'Adjust between 1 and 100000 points'; end if;
+  delta := (adjustment_data->>'points')::integer;
+  note := trim(adjustment_data->>'reason');
+  if request_id is null or customer_id is null then raise exception 'Customer and request ID are required'; end if;
+  if delta = 0 or abs(delta::bigint) > 100000 then raise exception 'Adjust between 1 and 100000 points'; end if;
+  if note is null or length(note) not between 3 and 500 then raise exception 'Reason must contain 3 to 500 characters'; end if;
+  payload := jsonb_build_object('user_id', customer_id, 'points', delta, 'reason', note);
+  perform pg_advisory_xact_lock(hashtextextended('crownetic.admin.request:' || request_id::text, 0));
+  select * into previous from public.admin_activity a where a.request_id = adjustment.request_id;
+  if found then
+    if previous.action <> 'points_adjusted' or previous.request_payload <> payload then raise exception 'Request ID was already used for a different action'; end if;
+    return previous.result_id;
+  end if;
+  select u.email into customer_email from auth.users u
+    where u.id = customer_id and u.email_confirmed_at is not null and nullif(trim(u.email), '') is not null
+      and not exists (select 1 from public.admin_users a where a.user_id = u.id)
+    for update of u;
+  if not found then raise exception 'Select a verified customer account'; end if;
+  select coalesce(sum(e.points), 0) into balance from public.loyalty_events e where e.user_id = customer_id;
+  if delta < 0 and balance + delta < 0 then raise exception 'Deduction exceeds the customer point balance'; end if;
+  select u.email into actor_email from auth.users u where u.id = auth.uid();
+  insert into public.loyalty_events(id, event_ref, user_id, points, item_count, event_type, reason, created_by)
+    values(event_id, 'admin-adjustment:' || request_id::text, customer_id, delta, 0, 'adjustment', note, auth.uid());
+  insert into public.admin_activity(action, actor_id, actor_email, user_id, customer_email, reference, summary, request_id, request_payload, result_id)
+    values('points_adjusted', auth.uid(), coalesce(actor_email, ''), customer_id, customer_email,
+      'admin-adjustment:' || request_id::text, 'Adjusted points by ' || delta::text || ': ' || note, request_id, payload, event_id);
+  return event_id;
+end;
+$$;
+
+create or replace function public.admin_refund_order(p_order_id uuid, p_reason text)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare
+  target public.orders%rowtype; customer_id uuid; purchase_points integer; purchase_items integer;
+  note text := trim(p_reason); customer_email text; actor_email text;
+begin
+  if not public.is_catalog_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  if note is null or length(note) not between 3 and 500 then raise exception 'Reason must contain 3 to 500 characters'; end if;
+  select o.user_id into customer_id from public.orders o where o.id = p_order_id;
+  if not found then raise exception 'Order not found'; end if;
+  perform 1 from auth.users u where u.id = customer_id for update;
+  select * into target from public.orders o where o.id = p_order_id for update;
+  if target.status = 'refunded' then
+    if target.refund_reason <> note then raise exception 'This order is already refunded with a different reason'; end if;
+    return target.id;
+  end if;
+  select e.points, e.item_count into purchase_points, purchase_items from public.loyalty_events e
+    where e.order_id = target.id and e.event_type = 'purchase';
+  if not found then raise exception 'Original purchase award is missing; review this order before refunding'; end if;
+  select u.email into customer_email from auth.users u where u.id = customer_id;
+  select u.email into actor_email from auth.users u where u.id = auth.uid();
+  insert into public.loyalty_events(event_ref, user_id, points, item_count, event_type, reason, created_by, order_id)
+    values('order-refund:' || target.id::text, customer_id, -purchase_points, purchase_items, 'refund', note, auth.uid(), target.id);
+  update public.orders o set status = 'refunded', refund_reason = note, refunded_at = now() where o.id = target.id;
+  insert into public.admin_activity(action, actor_id, actor_email, user_id, customer_email, reference, summary, result_id)
+    values('order_refunded', auth.uid(), coalesce(actor_email, ''), customer_id, coalesce(customer_email, ''), target.reference,
+      'Refunded recorded sale and reversed ' || purchase_points::text || ' points: ' || note, target.id);
+  return target.id;
+end;
+$$;
+
+create or replace function public.admin_update_fulfillment(p_order_id uuid, p_status text, p_tracking_number text)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare
+  target public.orders%rowtype; tracking text := trim(coalesce(p_tracking_number, ''));
+  customer_email text; actor_email text; customer_id uuid;
+begin
+  if not public.is_catalog_admin() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  if p_status is null or p_status not in ('unfulfilled', 'processing', 'shipped', 'delivered') then raise exception 'Invalid fulfillment status'; end if;
+  if length(tracking) > 200 then raise exception 'Tracking number must contain at most 200 characters'; end if;
+  -- Match refund's customer-before-order lock order, including the audit FKs.
+  select o.user_id into customer_id from public.orders o where o.id = p_order_id;
+  if not found then raise exception 'Order not found'; end if;
+  perform 1 from auth.users u where u.id = customer_id for update;
+  select * into target from public.orders o where o.id = p_order_id for update;
+  if not found then raise exception 'Order not found'; end if;
+  if target.status <> 'paid' then raise exception 'Refunded orders cannot change fulfillment'; end if;
+  if target.fulfillment_status = p_status and target.tracking_number = tracking then return target.id; end if;
+  select u.email into customer_email from auth.users u where u.id = target.user_id;
+  select u.email into actor_email from auth.users u where u.id = auth.uid();
+  update public.orders o set fulfillment_status = p_status, tracking_number = tracking where o.id = target.id;
+  insert into public.admin_activity(action, actor_id, actor_email, user_id, customer_email, reference, summary, result_id)
+    values('fulfillment_updated', auth.uid(), coalesce(actor_email, ''), target.user_id, coalesce(customer_email, ''), target.reference,
+      'Changed fulfillment to ' || p_status || case when tracking = '' then '' else ' (' || tracking || ')' end, target.id);
+  return target.id;
+end;
+$$;
+
+revoke all on function public.admin_portal_snapshot() from public, anon, authenticated;
+revoke all on function public.admin_record_sale(jsonb) from public, anon, authenticated;
+revoke all on function public.admin_adjust_points(jsonb) from public, anon, authenticated;
+revoke all on function public.admin_refund_order(uuid, text) from public, anon, authenticated;
+revoke all on function public.admin_update_fulfillment(uuid, text, text) from public, anon, authenticated;
+grant execute on function public.admin_portal_snapshot() to authenticated;
+grant execute on function public.admin_record_sale(jsonb) to authenticated;
+grant execute on function public.admin_adjust_points(jsonb) to authenticated;
+grant execute on function public.admin_refund_order(uuid, text) to authenticated;
+grant execute on function public.admin_update_fulfillment(uuid, text, text) to authenticated;
+
+-- END ADMIN PORTAL (004)
 notify pgrst, 'reload schema';
 commit;
 

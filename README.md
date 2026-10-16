@@ -46,12 +46,20 @@ Use Account to sign in with an authorized Supabase admin email and password. In 
 
 Product images can be HTTPS URLs or JPEG/PNG/WebP uploads up to 2 MB. Demo uploads and catalogue edits are stored in this browser's local storage; they are not shared between customers or devices. If browser storage is full, save errors are displayed without discarding the form. Reset Demo restores the original sample catalogue after confirmation. The bag also persists locally, independently of catalogue resets.
 
+## Admin portal
+
+The admin portal includes Overview, Product Room, customer search/details, multi-item paid-sale records, fulfillment/tracking, points adjustments with reasons, one-time refund reversals, and an activity audit. Verified customer accounts appear even without a saved profile. Customers see only their own purchases and signed points history. Default rewards remain 100 points per item with product overrides and Bronze/Gold/Platinum thresholds at 1,000/5,000/10,000 points.
+
+For an existing database, run [supabase/004_admin_portal.sql](supabase/004_admin_portal.sql) in Supabase SQL Editor as `postgres` after the current schema; the rerunnable migration preserves rows. Fresh installs can use the complete combined `supabase/setup.sql`. **The new migration has not been applied to the live project from this workspace.** Product Room works without it; other sections explain the missing setup. Authenticated RPCs check explicit admin membership; no service-role key is used in the browser.
+
+Sales are manually recorded after an admin confirms payment externally; the portal does not collect payments or process financial refunds, and stock remains managed separately in Product Room. Unique references/request IDs protect against duplicate points; sale snapshots preserve original prices and rewards. Manual deductions cannot go below zero, while a refund can produce a negative points balance and Member status. The simulated storefront checkout remains separate. See [the admin workflow and setup guide](docs/admin-portal.md), including the local demo: create a customer in the same browser first, then sign in as `admin@123` / `admin@123` in an explicit demo build.
+
 ## Connect Supabase
 
 This checkout defaults to CROWNETIC’s project through `site-config.js`. A publishable key is designed to be bundled in the browser; RLS and admin membership enforce access. To configure another project or review the setup:
 
 1. Create or choose your Supabase project.
-2. Open **SQL Editor → New query**, paste the entire [supabase/setup.sql](supabase/setup.sql) file and run it as `postgres`. It combines the catalogue, product photography and customer rewards setup. It can be rerun against this project's existing schema without duplicate-table/policy/function errors and preserves stored rows. It refreshes the named application policies, product functions, and public `product-images` bucket settings. Expect `CROWNETIC database setup complete`. The current numbered `001`–`003` scripts are also rerunnable if you prefer the separate steps; use their latest versions in order. Older copies may still raise “already exists” errors. Each corrected numbered script returns its own completion message. An unrelated or differently shaped schema still requires review.
+2. Open **SQL Editor → New query**, paste the entire [supabase/setup.sql](supabase/setup.sql) file and run it as `postgres`. It combines the catalogue, product photography, customer rewards and admin portal setup. It can be rerun against this project's existing schema without duplicate-table/policy/function errors and preserves stored rows. It refreshes the named application policies, product functions, and public `product-images` bucket settings. Expect `CROWNETIC database setup complete`. The current numbered `001`–`004` scripts are also rerunnable if you prefer the separate steps; use their latest versions in order. Existing installations of `001`–`003` need the new `004_admin_portal.sql`. Older copies may still raise “already exists” errors. An unrelated or differently shaped schema still requires review.
 3. Create an administrator account using **Supabase → Authentication → Users → Add user**. Set the password there; do not share or commit it. For your manually created owner account you can enable **Auto Confirm User**, or complete email verification through the configured provider.
 4. Open [supabase/grant_admin.sql](supabase/grant_admin.sql), replace `YOUR_ADMIN_EMAIL_HERE` with that verified account's email, and run it in SQL Editor as `postgres`. It refuses missing, unconfirmed or ambiguous accounts, preserves existing admins, and returns **Admin access enabled**. The generic file intentionally contains no personal email.
 
@@ -64,7 +72,7 @@ The project URL and public publishable key are configured. Live read-only checks
 
 ## Payments and shipping
 
-Checkout is a simulation: no money is charged, no order is persisted, stock is not reserved, and no delivery is arranged. Use fictional example contact details. The form does not request card details or persist customer information. Shipping is an illustrative RM 0.00. Cards, FPX and DuitNow are not integrated. A real launch needs a selected payment provider, server-side payment creation, verified webhooks, order storage, shipping rates and stock reservation.
+Storefront checkout is a simulation: no money is charged, no checkout order is persisted, stock is not reserved, and no delivery is arranged. Admin can separately record externally paid sales; those records are not connected to the simulated checkout. Use fictional example contact details in checkout. The form does not request card details or persist customer information. Shipping is an illustrative RM 0.00. Cards, FPX and DuitNow are not integrated. A real launch needs a selected payment provider, server-side payment creation, verified webhooks, checkout order integration, shipping rates and stock reservation.
 
 ## Validation
 
@@ -75,6 +83,8 @@ npm run test:browser
 ```
 
 Browser tests use `/usr/bin/chromium` when present. Else run `npx playwright install chromium` and set `CHROMIUM_PATH` to the installed Chrome executable, or adjust the launch settings in `playwright.config.js`. Browser tests cover admin publishing, draft visibility, bag persistence, simulated checkout, corrupt storage recovery and a 390px layout. The test server builds and serves an isolated demo in `.test-site`, and the browser fixture blocks/fails any attempt to contact the real Supabase project. Email-verification tests use a mocked project. Tests do not validate the live Supabase project.
+
+Browser checks default to one worker because simultaneous WebGL rendering can exceed test time limits on the cloud software GPU. Admin tests also cover sale recording, point adjustments, fulfillment, refunds, customer isolation and migration recovery. PostgreSQL permissions, transactions and concurrency checks are in `tests/sql/admin_portal.py`; its opening instructions use a disposable local database rather than the live project.
 
 `npm run preview` serves the production build. The bundled sample uses hash routes and needs no server rewrite rules. This repository has not been deployed.
 

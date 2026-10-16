@@ -1,3 +1,7 @@
+import { adminStore } from "./admin/service.js";
+import { adminShell, renderAdminPortal, adminSetupPage } from "./admin/pages.js";
+import { mountAdminPortal } from "./admin/portal.js";
+import "./admin/styles.css";
 import { mountHeaderLogo, clearHeaderLogo } from "./components/header-logo.jsx";
 import { customers, emailAuth, usesEmailCode } from "./customer/service.js";
 import { authPage, dashboard, settingsPage, verificationPage } from "./customer/pages.js";
@@ -111,6 +115,9 @@ function loginPage() {
   return `<section class="page login"><span class="small-label">CROWNETIC STUDIO / SAMPLE</span><h1 class="page-heading">ADMIN SIGN IN.</h1><p class="description">Your collection. Your creative control.</p><form id="login-form"><div class="field"><label for="login-email">${connected ? "Email" : "Username"}</label><input id="login-email" type="${connected ? "email" : "text"}" name="email" required autocomplete="username"></div><div class="field"><label for="password">Password</label><input id="password" type="password" name="password" required autocomplete="current-password"></div><p id="login-error" class="error" role="alert"></p><button class="button" type="submit">SIGN IN ${arrow}</button></form>${connected ? "" : '<p class="notice" style="margin-top:25px">Sample login: admin@123 / admin@123. This local demo login is for trying the sample, not production security.</p>'}</section>`;
 }
 async function adminPage() {
+  const params = new URLSearchParams(location.hash.split("?")[1] || "");
+  const requestedView = params.get("view") || "products";
+  const view = ["products", "overview", "customers", "orders", "points", "activity"].includes(requestedView) ? requestedView : "products";
   if (!connected && !demoAdmin) return loginPage();
   if (connected) {
     const db = await supabase();
@@ -128,7 +135,16 @@ async function adminPage() {
       return `<section class="page empty"><h1 class="page-heading">ADMIN ACCESS REQUIRED.</h1><p>This account does not have catalogue management permission.</p><button class="button" data-signout>Sign out</button></section>`;
   }
   allProducts = await catalog.list(true);
-  return `<section class="page"><div class="section-top"><div><span class="small-label">CROWNETIC STUDIO</span><h1 class="page-heading" style="margin-bottom:0">THE PRODUCT ROOM.</h1></div>${connected ? '<button class="small-button" data-signout>SIGN OUT</button>' : '<div><button class="small-button" data-reset>RESET DEMO</button> <button class="small-button" data-signout>SIGN OUT</button></div>'}</div><div class="notice">${connected ? "Supabase catalogue. Only authorized administrators can publish products." : "SAMPLE ADMIN — Signed in as admin@123. Changes are saved in this browser only. Publish a product here to see it in the shop."}</div><div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div></section>`;
+  if (view === "products") return { html: adminShell(`<div class="admin-layout"><div><div class="section-top"><span class="small-label">${allProducts.length} PRODUCTS</span><button class="small-button" data-new>+ NEW PRODUCT</button></div><div class="admin-list">${allProducts.map((p) => `<article class="admin-item"><img src="${e(p.image_url)}" alt="${e(p.name)}"><div><h3>${e(p.name)}</h3><p>${money(p.price_sen)} &nbsp; / &nbsp; ${p.published ? "PUBLISHED" : "DRAFT"}</p></div><button class="small-button" data-edit="${e(p.id)}" aria-label="Edit ${e(p.name)}">EDIT ↗</button></article>`).join("")}</div></div><div id="editor">${editor()}</div></div>`, view) };
+  try {
+    const snapshot = await adminStore.snapshot();
+    return {
+      html: renderAdminPortal({ view, snapshot, products: allProducts, customerId: params.get("customer") || "", orderId: params.get("order") || "" }),
+      portal: { view, snapshot, products: allProducts },
+    };
+  } catch (error) {
+    return { html: adminSetupPage(view, error) };
+  }
 }
 function editor(p) {
   return `<form id="product-form" class="admin-form" data-id="${e(p?.id || "")}"><h2>${p ? "EDIT THE PIECE." : "ADD A NEW PIECE."}</h2><div class="field"><label for="p-name">Product name</label><input name="name" id="p-name" required maxlength="120" value="${e(p?.name || "")}"></div><div class="form-grid"><div class="field"><label for="p-category">Category</label><select id="p-category" name="category">${["Tees", "Bottoms", "Accessories"].map((c) => `<option ${p?.category === c ? "selected" : ""}>${c}</option>`).join("")}</select></div><div class="field"><label for="p-price">Price (MYR)</label><input id="p-price" name="price" type="number" min="0" max="999999" step="0.01" required value="${p ? (p.price_sen / 100).toFixed(2) : ""}"></div></div><div class="field"><label for="p-description">Description</label><textarea name="description" id="p-description" required maxlength="2500">${e(p?.description || "")}</textarea></div><div class="field"><label for="p-image">Image URL (HTTPS) or upload below</label><input id="p-image" name="image" value="${e(p?.image_url || (connected ? "" : "/assets/tee.png"))}"></div><div class="field"><label for="p-file">Upload JPEG, PNG or WebP (max 2 MB)</label><input type="file" id="p-file" accept="image/jpeg,image/png,image/webp"><p class="small-label">IMAGE IS UPLOADED WHEN YOU SAVE</p></div><div class="form-grid">${["left", "right"].map((side) => `<div class="field"><label for="view-${side}">${side} angle image URL (optional)</label><input id="view-${side}" name="view-${side}" value="${e(p?.[`view_${side}`] || "")}"><label for="file-${side}" style="margin-top:10px">Upload ${side} angle</label><input id="file-${side}" type="file" accept="image/jpeg,image/png,image/webp"></div>`).join("")}</div><div class="field"><label for="reward-points">Reward points per item</label><input id="reward-points" name="reward_points" type="number" min="0" max="100000" step="1" value="${p?.reward_points ?? 100}" required></div><label>STOCK BY SIZE (0 = SOLD OUT)</label><div class="stock-grid">${["S", "M", "L", "XL", "ONE SIZE"].map((s) => `<div><label for="stock-${s}">${s}</label><input type="number" id="stock-${s}" name="stock-${s}" min="0" step="1" required value="${p?.variants.find((v) => v.size === s)?.stock || 0}"></div>`).join("")}</div><label style="margin:25px 0 15px"><input type="checkbox" name="published" ${p?.published ? "checked" : ""}>PUBLISHED — VISIBLE IN SHOP</label><p id="save-error" class="error" role="alert"></p><button class="button" type="submit">${p ? "SAVE CHANGES" : "CREATE PRODUCT"} ${arrow}</button></form>`;
@@ -138,6 +154,7 @@ function notFound() {
 }
 let customerUser = null;
 let verificationTimer;
+let cleanupAdminPortal = () => {};
 function mountVerification() {
   const button = document.querySelector("[data-resend-verification]");
   if (!button) return;
@@ -154,6 +171,8 @@ let renderVersion = 0;
 async function render({ scroll = true } = {}) {
   const version = ++renderVersion;
   clearInterval(verificationTimer);
+  cleanupAdminPortal();
+  cleanupAdminPortal = () => {};
   const loader = scroll ? showPageLoader() : null;
   clearHeaderLogo();
   clearProductEffects();
@@ -173,6 +192,7 @@ async function render({ scroll = true } = {}) {
     );
     document.body.classList.toggle("storefront-page", path !== "/admin");
     let content;
+    let portal;
     if (path === "/") content = home();
     else if (path === "/shop") content = shop();
     else if (path.startsWith("/product/")) content = productPage(path.slice(9));
@@ -184,20 +204,32 @@ async function render({ scroll = true } = {}) {
       customerUser = await customers.current();
       if (path === "/signup" || path === "/login")
         content = customerUser
-          ? dashboard(customerUser, await customers.activity())
+          ? dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders()]))
           : authPage(path === "/signup", "", path === "/login" ? emailAuth.pending()?.email : "");
       else
         content = customerUser
           ? path === "/settings"
             ? settingsPage(customerUser)
-            : dashboard(customerUser, await customers.activity())
+            : dashboard(customerUser, ...await Promise.all([customers.activity(), customers.orders()]))
           : authPage(false, "", emailAuth.pending()?.email);
-    } else if (path === "/admin") content = await adminPage();
+    } else if (path === "/admin") {
+      const result = await adminPage();
+      content = typeof result === "string" ? result : result.html;
+      portal = result.portal;
+    }
     else content = notFound();
     if (version !== renderVersion) return;
     app.innerHTML = shell(content);
     mountHeaderLogo();
     mountVerification();
+    if (portal) cleanupAdminPortal = mountAdminPortal({
+      ...portal,
+      onRefresh: async (message) => {
+        await render({ scroll: false });
+        if (message) toast(message);
+      },
+      onNavigate: navigate,
+    }) || (() => {});
     if (path === "/") {
       mountScrollEffect();
     }
