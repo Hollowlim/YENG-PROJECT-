@@ -41,6 +41,19 @@
 }
 .admin-tabs a:hover { color: #fff; background: #212422; }
 .admin-tabs a.active { background: #edece5; color: #111411; }
+.admin-tabs-enhanced { display: block; scroll-padding-inline: 7px; }
+.admin-tabs .admin-rubber-control {
+  display: grid;
+  width: 100%;
+  min-width: 680px;
+}
+.admin-tabs .rubber-segment__item {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.admin-tabs .rubber-segment:not([data-draggable]) { touch-action: pan-x pan-y; }
+.admin-portal[data-navigating] > [inert] { opacity: .6; }
 .admin-mode {
   display: flex;
   gap: 11px;

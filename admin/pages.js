@@ -11,6 +11,7 @@ const views = {
   points: ["Points", "REWARDS WITH PURPOSE."],
   activity: ["Activity", "THE STUDIO LOG."],
 };
+export const adminSections = Object.entries(views).map(([value, [label]]) => ({ value, label }));
 const number = (value) => Number(value || 0).toLocaleString("en-MY");
 const date = (value, includeTime = false) => {
   if (!value || !Number.isFinite(new Date(value).getTime())) return "—";

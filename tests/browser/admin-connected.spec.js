@@ -49,10 +49,10 @@ test('connected Product Room stays available while new tools explain migration 0
   await login(page);
   await expect(page.getByRole('heading', { name: 'THE PRODUCT ROOM.' })).toBeVisible();
   expect(calls.some(call => call.path.includes('/rpc/'))).toBe(false);
-  await page.getByRole('navigation', { name: 'Admin navigation' }).getByRole('link', { name: 'Customers', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Admin navigation' }).getByRole('radio', { name: 'Customers', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('supabase/004_admin_portal.sql');
   await expect(page.getByRole('button', { name: 'TRY AGAIN', exact: true })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Admin navigation' }).getByRole('link', { name: 'Product Room', exact: true }).click();
+  await page.getByRole('navigation', { name: 'Admin navigation' }).getByRole('radio', { name: 'Product Room', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'THE PRODUCT ROOM.' })).toBeVisible();
   expect(calls.filter(call => call.path.includes('/rpc/')).map(call => call.path)).toEqual(['/rest/v1/rpc/admin_portal_snapshot']);
 });

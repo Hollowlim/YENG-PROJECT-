@@ -9,7 +9,7 @@ test('admin navigation preserves Product Room and exposes customer tools', async
   await expect(page.getByRole('heading', { name: 'THE PRODUCT ROOM.' })).toBeVisible();
   const nav = page.getByRole('navigation', { name: 'Admin navigation' });
   await expect(nav).toBeVisible();
-  await nav.getByRole('link', { name: 'Customers', exact: true }).click();
+  await nav.getByRole('radio', { name: 'Customers', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'YOUR CUSTOMERS.' })).toBeVisible();
 });
 
@@ -36,7 +36,7 @@ test('admin records a sale, adjusts points, tracks delivery and refunds once; cu
   await signup(page);
   await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
   await adminLogin(page);
-  await nav(page).getByRole('link', { name: 'Customers', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Customers', exact: true }).click();
   await page.getByLabel('Search customers', { exact: true }).fill('missing@example.com');
   await expect(page.getByText('No customers match your search.', { exact: true })).toBeVisible();
   await page.getByLabel('Search customers', { exact: true }).fill('jamie@example.com');
@@ -66,7 +66,7 @@ test('admin records a sale, adjusts points, tracks delivery and refunds once; cu
   await expect(page.getByLabel('Tracking number (optional)', { exact: true })).toHaveValue('MY-TRACK-123');
   await page.reload();
   await expect(page.getByLabel('Fulfillment status', { exact: true })).toHaveValue('shipped');
-  await nav(page).getByRole('link', { name: 'Points', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Points', exact: true }).click();
   let points = page.locator('#admin-adjust-points');
   await points.getByLabel('Customer', { exact: true }).selectOption(customerId);
   await points.getByLabel('Number of points', { exact: true }).fill('900');
@@ -80,10 +80,10 @@ test('admin records a sale, adjusts points, tracks delivery and refunds once; cu
   await points.getByLabel('Reason for adjustment', { exact: true }).fill('Points correction');
   await points.getByRole('button', { name: 'SAVE POINTS ADJUSTMENT' }).click();
   await expect(page.getByText('Points correction', { exact: true })).toBeVisible();
-  await nav(page).getByRole('link', { name: 'Customers', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Customers', exact: true }).click();
   await page.getByRole('link', { name: 'Jamie Rain', exact: true }).click();
   await expect(page.locator('.admin-detail-heading .admin-tier')).toHaveText('Bronze');
-  await nav(page).getByRole('link', { name: 'Orders', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Orders', exact: true }).click();
   await page.getByRole('link', { name: 'IG-001', exact: true }).click();
   await page.getByLabel('Reason for refund', { exact: true }).fill('Full return approved');
   await page.getByLabel('I have completed the refund outside this website.', { exact: true }).check();
@@ -91,9 +91,9 @@ test('admin records a sale, adjusts points, tracks delivery and refunds once; cu
   await expect(page.getByRole('heading', { name: 'REFUND RECORDED.', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'RECORD REFUND & REVERSE POINTS', exact: true })).toHaveCount(0);
-  await nav(page).getByRole('link', { name: 'Activity', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Activity', exact: true }).click();
   await expect(page.locator('.admin-activity-item')).toHaveCount(5);
-  await nav(page).getByRole('link', { name: 'Overview', exact: true }).click();
+  await nav(page).getByRole('radio', { name: 'Overview', exact: true }).click();
   await expect(page.locator('.admin-stat').filter({ hasText: 'PAID SALES' })).toContainText('RM 0.00');
   await page.screenshot({ path: 'test-results/admin-overview.png', fullPage: true });
   await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
@@ -129,7 +129,7 @@ test('admin customer and order tools fit mobile and preserve state across tabs',
   await page.getByRole('button', { name: 'SIGN OUT', exact: true }).click();
   await adminLogin(page);
   for (const view of ['Customers', 'Orders', 'Points', 'Activity', 'Overview']) {
-    await nav(page).getByRole('link', { name: view, exact: true }).click();
+    await nav(page).getByRole('radio', { name: view, exact: true }).click();
     await expect(page.locator('[data-admin-portal]')).toBeVisible();
     await expect(page.locator('#page-loader')).toBeHidden();
     const layout = await page.evaluate(() => ({ width: innerWidth, scroll: document.documentElement.scrollWidth, offenders: [...document.querySelectorAll('main *')].map(node => ({ tag: node.tagName, cls: node.className, x: node.getBoundingClientRect().x, right: node.getBoundingClientRect().right })).filter(rect => rect.right > innerWidth + 1).slice(0, 12) }));

@@ -1,6 +1,7 @@
 import { adminStore } from "./admin/service.js";
 import { adminShell, renderAdminPortal, adminSetupPage } from "./admin/pages.js";
 import { mountAdminPortal } from "./admin/portal.js";
+import { mountAdminNavigation, clearAdminNavigation, getAdminNavigationHost } from "./admin/navigation.jsx";
 import "./admin/styles.css";
 import { mountHeaderLogo, clearHeaderLogo } from "./components/header-logo.jsx";
 import { customers, emailAuth, usesEmailCode } from "./customer/service.js";
@@ -168,16 +169,30 @@ function mountVerification() {
   verificationTimer = setInterval(update, 1000);
 }
 let renderVersion = 0;
-async function render({ scroll = true } = {}) {
+async function render({ scroll = true, preserveAdminNavigation = false } = {}) {
   const version = ++renderVersion;
+  // Keep this island alive only for its own section changes. Sign out and other
+  // navigation still clear the old page immediately before checking access.
+  const retainedNavigation = preserveAdminNavigation && location.hash.split("?")[0] === "#/admin"
+    ? getAdminNavigationHost() : null;
   clearInterval(verificationTimer);
   cleanupAdminPortal();
   cleanupAdminPortal = () => {};
   const loader = scroll ? showPageLoader() : null;
+  if (!retainedNavigation) clearAdminNavigation();
   clearHeaderLogo();
   clearProductEffects();
   clearScrollEffect();
-  app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
+  if (retainedNavigation) {
+    const portal = retainedNavigation.closest("[data-admin-portal]");
+    portal.dataset.navigating = "true";
+    portal.setAttribute("aria-busy", "true");
+    for (const child of portal.children) {
+      if (child !== retainedNavigation && !child.classList.contains("admin-heading")) child.inert = true;
+    }
+  } else {
+    app.innerHTML = shell('<div class="loading">Opening the archive…</div>');
+  }
   try {
     products = await catalog.list();
     if (version !== renderVersion) return;
@@ -219,7 +234,13 @@ async function render({ scroll = true } = {}) {
     }
     else content = notFound();
     if (version !== renderVersion) return;
+    const focusedSection = retainedNavigation?.contains(document.activeElement) ? document.activeElement : null;
+    retainedNavigation?.remove();
     app.innerHTML = shell(content);
+    const navigationPlaceholder = app.querySelector("[data-admin-portal] .admin-tabs");
+    if (retainedNavigation && navigationPlaceholder) navigationPlaceholder.replaceWith(retainedNavigation);
+    mountAdminNavigation((path) => navigate(path, { scroll: false, preserveAdminNavigation: true }));
+    if (focusedSection?.isConnected) focusedSection.focus({ preventScroll: true });
     mountHeaderLogo();
     mountVerification();
     if (portal) cleanupAdminPortal = mountAdminPortal({
@@ -240,6 +261,7 @@ async function render({ scroll = true } = {}) {
     if (scroll) window.scrollTo(0, 0);
   } catch (error) {
     if (version !== renderVersion) return;
+    clearAdminNavigation();
     app.innerHTML = shell(
       `<section class="page empty"><h1 class="page-heading">A MOMENT, PLEASE.</h1><p>We couldn't load the catalogue.</p><p class="error">${e(error.message)}</p><button class="button" data-retry>TRY AGAIN ${arrow}</button></section>`,
     );
@@ -258,9 +280,9 @@ async function signedInDestination() {
   if (roleError) throw roleError;
   return membership ? "/admin" : "/account";
 }
-function navigate(path) {
+function navigate(path, options) {
   history.pushState({}, "", path.startsWith("#/") ? path : `#${path}`);
-  render();
+  render(options);
 }
 window.addEventListener("popstate", () => render());
 window.addEventListener("hashchange", () => render());
