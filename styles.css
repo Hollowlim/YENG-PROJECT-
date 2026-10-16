@@ -1036,17 +1036,17 @@ textarea {
 .brand-logo {
   position: relative;
   display: block;
-  aspect-ratio: 1875 / 275;
+  aspect-ratio: 2002 / 275;
   overflow: hidden;
 }
 .brand-logo img {
   position: absolute;
   top: 0;
   left: 0;
-  width: 115.84%;
+  width: 108.491508%;
   max-width: none;
   height: auto;
-  transform: translate(-7.827%, -32.873%);
+  transform: translate(-3.683241%, -32.873%);
 }
 .wordmark.brand-logo {
   width: min(90%, 1050px);

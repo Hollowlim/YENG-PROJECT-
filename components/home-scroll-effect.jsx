@@ -21,7 +21,7 @@ function Campaign() {
   return (
     <ScrollExpand
       src="/assets/campaign.png"
-      alt="CROWNETIC campaign: washed charcoal streetwear against Kuala Lumpur concrete architecture"
+      alt="CROWNNETIC campaign: washed charcoal streetwear against Kuala Lumpur concrete architecture"
       title={
         reduced ? (
           ""
@@ -46,7 +46,7 @@ function Campaign() {
       enabled={!reduced}
       className={`crownetic-scroll-campaign ${reduced ? "is-reduced" : ""}`}
     >
-      <span className="eyebrow">CROWNETIC — COLLECTION 001</span>
+      <span className="eyebrow">CROWNNETIC — COLLECTION 001</span>
       {reduced ? (
         <h1>
           BUILT TO

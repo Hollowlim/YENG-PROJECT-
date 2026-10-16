@@ -70,7 +70,7 @@ const copy = {
   "Email address or username": ["Alamat e-mel atau nama pengguna", "邮箱或用户名", "மின்னஞ்சல் முகவரி அல்லது பயனர்பெயர்"],
   "Verify your email with a code before signing in.": ["Sahkan e-mel anda dengan kod sebelum log masuk.", "登录前请使用验证码验证邮箱。", "உள்நுழையும் முன் குறியீடு மூலம் மின்னஞ்சலை உறுதிசெய்யவும்."],
   "VERIFY YOUR EMAIL.": ["SAHKAN E-MEL ANDA.", "验证你的邮箱。", "மின்னஞ்சலை உறுதிசெய்யவும்."],
-  "Enter the code from your CROWNETIC email.": ["Masukkan kod daripada e-mel CROWNETIC anda.", "输入 CROWNETIC 邮件中的验证码。", "CROWNETIC மின்னஞ்சலில் உள்ள குறியீட்டை உள்ளிடவும்."],
+  "Enter the code from your CROWNNETIC email.": ["Masukkan kod daripada e-mel CROWNNETIC anda.", "输入 CROWNNETIC 邮件中的验证码。", "CROWNNETIC மின்னஞ்சலில் உள்ள குறியீட்டை உள்ளிடவும்."],
   "If you need a new code, enter your email and choose resend. Check your spam folder too.": ["Untuk kod baharu, masukkan e-mel dan pilih hantar semula. Semak juga folder spam.", "需要新验证码时，请输入邮箱并选择重新发送。也请检查垃圾邮件。", "புதிய குறியீட்டிற்கு மின்னஞ்சலை உள்ளிட்டு மீண்டும் அனுப்பவும். ஸ்பேம் கோப்புறையையும் பார்க்கவும்."],
   "Verification code": ["Kod pengesahan", "验证码", "உறுதிப்படுத்தல் குறியீடு"],
   "Use the latest code. Never share it with anyone.": ["Gunakan kod terkini. Jangan kongsi dengan sesiapa.", "请使用最新验证码，切勿与他人分享。", "சமீபத்திய குறியீட்டைப் பயன்படுத்தவும். யாருடனும் பகிர வேண்டாம்."],
@@ -180,10 +180,10 @@ const copy = {
     "完成模拟订单",
     "மாதிரி ஆர்டரை முடிக்கவும்",
   ],
-  "CROWNETIC MEMBERS": [
-    "AHLI CROWNETIC",
-    "CROWNETIC 会员",
-    "CROWNETIC உறுப்பினர்கள்",
+  "CROWNNETIC MEMBERS": [
+    "AHLI CROWNNETIC",
+    "CROWNNETIC 会员",
+    "CROWNNETIC உறுப்பினர்கள்",
   ],
   "JOIN THE INNER CIRCLE.": [
     "SERTAI KOMUNITI KAMI.",
@@ -215,10 +215,10 @@ const copy = {
     "已有账户？",
     "ஏற்கனவே உறுப்பினரா?",
   ],
-  "New to CROWNETIC?": [
-    "Baharu di CROWNETIC?",
-    "初次来到 CROWNETIC？",
-    "CROWNETIC-க்கு புதியவரா?",
+  "New to CROWNNETIC?": [
+    "Baharu di CROWNNETIC?",
+    "初次来到 CROWNNETIC？",
+    "CROWNNETIC-க்கு புதியவரா?",
   ],
   "Use at least 8 characters for your password.": [
     "Gunakan sekurang-kurangnya 8 aksara untuk kata laluan.",

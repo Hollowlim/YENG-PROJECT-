@@ -33,7 +33,7 @@ const signedPoints = (points) => `<span class="${Number(points) < 0 ? "admin-neg
 export function adminShell(content, view = "products") {
   const selected = Object.hasOwn(views, view) ? view : "overview";
   return `<section class="page admin-portal" data-admin-portal data-view="${selected}">
-    <div class="admin-heading"><div><span class="small-label">CROWNETIC / STUDIO</span><h1 class="page-heading">${views[selected][1]}</h1></div><div class="admin-heading-actions">${!connected && selected === "products" ? '<button class="small-button" data-reset>RESET DEMO</button>' : ""}<button class="small-button" data-signout>SIGN OUT</button></div></div>
+    <div class="admin-heading"><div><span class="small-label">CROWNNETIC / STUDIO</span><h1 class="page-heading">${views[selected][1]}</h1></div><div class="admin-heading-actions">${!connected && selected === "products" ? '<button class="small-button" data-reset>RESET DEMO</button>' : ""}<button class="small-button" data-signout>SIGN OUT</button></div></div>
     <nav class="admin-tabs" aria-label="Admin navigation">${Object.entries(views).map(([key, [label]]) => `<a href="#/admin?view=${key}" data-link ${key === selected ? 'class="active" aria-current="page"' : ""}>${label}</a>`).join("")}</nav>
     <div class="admin-mode ${connected ? "admin-mode-connected" : ""}"><span class="admin-mode-dot" aria-hidden="true"></span><span>${connected ? "SUPABASE STUDIO — Connected customer records, recorded sales and rewards." : "DEMO STUDIO — Changes stay in this browser. Use sample customer details; no money is moved."}</span></div>
     <p class="admin-refresh-message" role="status" data-admin-message></p>

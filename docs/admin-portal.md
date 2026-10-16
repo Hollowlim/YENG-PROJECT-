@@ -1,4 +1,4 @@
-# CROWNETIC admin portal
+# CROWNNETIC admin portal
 
 Open **Account**, sign in with your verified Supabase admin account, and enter the admin portal. The account must have an explicit membership in `public.admin_users`; ordinary customer accounts cannot manage the store. Admin operations use authenticated database RPCs that check this membership on the server. The browser uses the public publishable key and the signed-in session, never a Supabase service-role key or Auth admin API.
 

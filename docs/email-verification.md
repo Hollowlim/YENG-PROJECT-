@@ -7,7 +7,7 @@ Email verification happens when a customer signs up. After confirmation, the cus
 ## 1. Test the sample with Supabase's default email
 
 1. In **Supabase → Authentication → Sign In / Providers → Email**, keep email signups enabled and enable **Confirm email**. Dashboard labels may vary. This server setting is required: an unconfirmed account must not receive a normal password-login session.
-2. Leave **Confirm signup** on its default template containing a confirmation link. Do not replace it with the optional CROWNETIC numeric-code template yet. If that template was already changed to show only `{{ .Token }}`, restore a confirmation-link template before testing link mode; the template and website mode must match.
+2. Leave **Confirm signup** on its default template containing a confirmation link. Do not replace it with the optional CROWNNETIC numeric-code template yet. If that template was already changed to show only `{{ .Token }}`, restore a confirmation-link template before testing link mode; the template and website mode must match.
 3. Use an email address belonging to a member of the Supabase project's organization. The built-in mailer sends only to pre-authorized **organization team addresses**, not to every address entered in **Authentication → Users**. Manage organization members in the **Team** settings. Delivery is subject to Supabase's low rate limits and has no production delivery guarantee.
 4. Open the website, choose **Account → Create an account**, and sign up with that test address. Open the confirmation email and click its link. Return to the original website and log in with the same email and password.
 5. If a message does not arrive, check spam and Supabase Auth logs, confirm the address is an authorized organization-team recipient, and respect the sending limit. A successful request does not prove that an email reached the inbox.
@@ -18,7 +18,7 @@ Keep **Confirm email** enabled for customers. Manually creating and auto-confirm
 
 Supabase's **Authentication → URL Configuration → Site URL** controls the default destination after confirmation. `localhost` always refers to the device opening the link. For example, a link opened on a phone cannot reach a development server running only on a laptop at `localhost`.
 
-The Supabase confirmation endpoint may verify the email **before** redirecting to that unavailable address. A failed destination page does not necessarily mean verification failed. Return to the original CROWNETIC website and try logging in first. You can also inspect that user's email-confirmation status in Supabase. If the account is already confirmed, do not keep requesting or reusing confirmation links. If it is still unconfirmed, correct the destination and then request a new email.
+The Supabase confirmation endpoint may verify the email **before** redirecting to that unavailable address. A failed destination page does not necessarily mean verification failed. Return to the original CROWNNETIC website and try logging in first. You can also inspect that user's email-confirmation status in Supabase. If the account is already confirmed, do not keep requesting or reusing confirmation links. If it is still unconfirmed, correct the destination and then request a new email.
 
 For development, use a browser-accessible development URL. For a shared sample, a static host's HTTPS URL is enough; you do not need to buy a custom domain. Set **Site URL** to that storefront and allow only intended development/production addresses in **Redirect URLs**. Do not configure `file://` as an Auth redirect. Opening the downloaded `index.html` can still let you return manually and sign in after verification, but a reachable hosted URL provides a smoother email-link experience.
 
@@ -34,7 +34,7 @@ Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor
 
 Customer email verification uses Supabase Auth and requires no additional application table. Database setup does not configure email confirmation, SMTP, or redirect URLs; those are separate Dashboard settings.
 
-CROWNETIC's public project URL and publishable key are included in `site-config.js`. To use a different project, copy `.env.example` to the uncommitted `.env.local` file and set both public browser settings from that project:
+CROWNNETIC's public project URL and publishable key are included in `site-config.js`. To use a different project, copy `.env.example` to the uncommitted `.env.local` file and set both public browser settings from that project:
 
 ```dotenv
 VITE_SUPABASE_URL=
@@ -56,7 +56,7 @@ Under **Authentication → Emails → SMTP Settings**, enable custom SMTP and en
 | Setting | Value |
 | --- | --- |
 | Sender email | Your chosen address on the verified Resend domain |
-| Sender name | `CROWNETIC` |
+| Sender name | `CROWNNETIC` |
 | Host | `smtp.resend.com` |
 | Port | `465` (TLS) |
 | Username | `resend` |
@@ -66,7 +66,7 @@ Review Supabase's sending limits and Resend's limits, and test delivery before o
 
 ### Optional: switch to numeric confirmation codes
 
-Only switch after template editing and delivery are configured. In **Emails → Templates → Confirm signup**, use [confirmation.html](../supabase/templates/confirmation.html) with a subject such as **Your CROWNETIC verification code**. Keep the essential expression intact:
+Only switch after template editing and delivery are configured. In **Emails → Templates → Confirm signup**, use [confirmation.html](../supabase/templates/confirmation.html) with a subject such as **Your CROWNNETIC verification code**. Keep the essential expression intact:
 
 ```html
 {{ .Token }}

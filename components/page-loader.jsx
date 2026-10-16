@@ -21,9 +21,9 @@ export function showPageLoader() {
   const host = document.createElement("div");
   host.id = "page-loader";
   host.setAttribute("role", "status");
-  host.setAttribute("aria-label", "Loading CROWNETIC");
+  host.setAttribute("aria-label", "Loading CROWNNETIC");
   host.setAttribute("aria-live", "polite");
-  host.innerHTML = `<div class="page-loader-brand"><div class="loader-art"><img src="${logo}" alt="CROWNETIC monogram" class="loader-static"><div class="loader-effect"></div></div><p>CROWNETIC</p><span>OPENING THE ARCHIVE</span></div>`;
+  host.innerHTML = `<div class="page-loader-brand"><div class="loader-art"><img src="${logo}" alt="CROWNNETIC monogram" class="loader-static"><div class="loader-effect"></div></div><p>CROWNNETIC</p><span>OPENING THE ARCHIVE</span></div>`;
   document.body.append(host);
   document.querySelector("#app")?.setAttribute("aria-busy", "true");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

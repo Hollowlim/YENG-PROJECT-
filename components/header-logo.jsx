@@ -8,16 +8,16 @@ import "./header-logo.css";
 let root;
 let generation = 0;
 let imageTask;
-// Trim only the transparent padding; preserve the supplied brand lettering.
+// Trim only the transparent padding; preserve the corrected CROWNNETIC lettering.
 function headerImage() {
   return imageTask ??= new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       try {
         const canvas = document.createElement("canvas");
-        canvas.width = 1875;
+        canvas.width = 2002;
         canvas.height = 275;
-        canvas.getContext("2d").drawImage(image, 170, 238, 1875, 275, 0, 0, 1875, 275);
+        canvas.getContext("2d").drawImage(image, 80, 238, 2002, 275, 0, 0, 2002, 275);
         resolve(canvas.toDataURL("image/png"));
       } catch (error) { reject(error); }
     };

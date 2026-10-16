@@ -34,7 +34,7 @@ export function mountProductEffects() {
           {
             name:
               host.closest(".product-angle-viewer")?.dataset.name ||
-              "CROWNETIC",
+              "CROWNNETIC",
             role: "Collection 001",
             videoSrc:
               location.protocol === "file:" ||

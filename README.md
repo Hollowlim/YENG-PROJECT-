@@ -1,6 +1,6 @@
-# CROWNETIC
+# CROWNNETIC
 
-A premium black-and-chrome streetwear storefront for Malaysia with MYR prices. Public Supabase connection settings for CROWNETIC are included in `site-config.js`; checkout remains a simulation. Built with **HTML, CSS and JavaScript**, using Vite for development and bundling.
+A premium black-and-chrome streetwear storefront for Malaysia with MYR prices. Public Supabase connection settings for CROWNNETIC are included in `site-config.js`; checkout remains a simulation. Built with **HTML, CSS and JavaScript**, using Vite for development and bundling.
 
 ## Open the website — no installation needed
 
@@ -38,7 +38,7 @@ The editable source is `source.html`, `styles.css`, `app.js`, `catalog.js` and `
 - `catalog.js`: sample catalogue, local persistence and optional Supabase adapter.
 - `public/assets/`: locally served, AI-generated illustrative fashion images.
 
-Fonts are bundled locally through Fontsource (Barlow Condensed and DM Sans); no external font request is required. The CROWNETIC wordmark is temporary and can be replaced by the final brand logo.
+Fonts are bundled locally through Fontsource (Barlow Condensed and DM Sans); no external font request is required. The CROWNNETIC wordmark is temporary and can be replaced by the final brand logo.
 
 ## Try adding products
 
@@ -56,7 +56,7 @@ Sales are manually recorded after an admin confirms payment externally; the port
 
 ## Connect Supabase
 
-This checkout defaults to CROWNETIC’s project through `site-config.js`. A publishable key is designed to be bundled in the browser; RLS and admin membership enforce access. To configure another project or review the setup:
+This checkout defaults to CROWNNETIC’s project through `site-config.js`. A publishable key is designed to be bundled in the browser; RLS and admin membership enforce access. To configure another project or review the setup:
 
 1. Create or choose your Supabase project.
 2. Open **SQL Editor → New query**, paste the entire [supabase/setup.sql](supabase/setup.sql) file and run it as `postgres`. It combines the catalogue, product photography, customer rewards and admin portal setup. It can be rerun against this project's existing schema without duplicate-table/policy/function errors and preserves stored rows. It refreshes the named application policies, product functions, and public `product-images` bucket settings. Expect `CROWNETIC database setup complete`. The current numbered `001`–`004` scripts are also rerunnable if you prefer the separate steps; use their latest versions in order. Existing installations of `001`–`003` need the new `004_admin_portal.sql`. Older copies may still raise “already exists” errors. An unrelated or differently shaped schema still requires review.
@@ -146,6 +146,6 @@ If the link opens `localhost` on a phone, it points to the phone rather than you
 
 Newer Free projects may show **“Set up custom SMTP to edit templates”** as an editing restriction. Current Studio source applies this to Free projects created on or after 3 June 2026 without custom SMTP or a Send Email hook; actual Dashboard eligibility may vary. Use the default link template for now. For public customer delivery, configure Resend or another appropriate mail provider. Resend requires a verified sending domain for arbitrary customer recipients, and its API key belongs only in secure Supabase SMTP settings.
 
-Optional numeric-code verification is retained: after mail delivery and template editing are configured, install [the CROWNETIC code email](supabase/templates/confirmation.html) using `{{ .Token }}`, set `emailVerificationMode = 'code'`, and rebuild. An optional `VITE_EMAIL_VERIFICATION_MODE` environment override takes precedence; change it to `'code'` or remove it when switching. Restart the dev server after environment changes. Keep the website mode and email template matched. Follow [the complete Supabase/email setup guide](docs/email-verification.md) for both paths and their live checks.
+Optional numeric-code verification is retained: after mail delivery and template editing are configured, install [the CROWNNETIC code email](supabase/templates/confirmation.html) using `{{ .Token }}`, set `emailVerificationMode = 'code'`, and rebuild. An optional `VITE_EMAIL_VERIFICATION_MODE` environment override takes precedence; change it to `'code'` or remove it when switching. Restart the dev server after environment changes. Keep the website mode and email template matched. Follow [the complete Supabase/email setup guide](docs/email-verification.md) for both paths and their live checks.
 
 Resends use a 60-second browser cooldown plus Supabase's server limits. The browser remembers only the pending email and resend time, never the password or verification code. Local demo accounts send no email. Read-only checks confirmed email signup and confirmation are enabled, but real email delivery and the full hosted link journey remain unverified. Rotate any API key shared in chat; no Resend key or SDK is bundled in the website.

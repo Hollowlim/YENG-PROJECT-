@@ -546,7 +546,7 @@ test("metallic header follows page navigation and keeps the home link accessible
   await page.goto("/index.html");
   await expect(page.locator("#page-loader")).toBeHidden();
   const logo = page.locator(".wordmark.brand-logo");
-  await expect(logo).toHaveAccessibleName("CROWNETIC");
+  await expect(logo).toHaveAccessibleName("CROWNNETIC");
   await expect(logo.locator("canvas")).toBeVisible();
   await page.waitForTimeout(1000);
   await logo.screenshot({ path: "test-results/metallic-header.png" });
