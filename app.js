@@ -1,5 +1,5 @@
 import { mountHeaderLogo, clearHeaderLogo } from "./components/header-logo.jsx";
-import { customers, emailAuth } from "./customer/service.js";
+import { customers, emailAuth, usesEmailCode } from "./customer/service.js";
 import { authPage, dashboard, settingsPage, verificationPage } from "./customer/pages.js";
 import { languageSelect, translateRoot, setLanguage } from "./customer/i18n.js";
 import { showPageLoader, hidePageLoader } from "./components/page-loader.jsx";
@@ -185,13 +185,13 @@ async function render({ scroll = true } = {}) {
       if (path === "/signup" || path === "/login")
         content = customerUser
           ? dashboard(customerUser, await customers.activity())
-          : authPage(path === "/signup");
+          : authPage(path === "/signup", "", path === "/login" ? emailAuth.pending()?.email : "");
       else
         content = customerUser
           ? path === "/settings"
             ? settingsPage(customerUser)
             : dashboard(customerUser, await customers.activity())
-          : authPage();
+          : authPage(false, "", emailAuth.pending()?.email);
     } else if (path === "/admin") content = await adminPage();
     else content = notFound();
     if (version !== renderVersion) return;
@@ -309,7 +309,9 @@ document.addEventListener("click", async (event) => {
       status.textContent = "";
       try {
         await emailAuth.resend(input.value);
-        status.textContent = "If this email has an unconfirmed account, a new code is on its way.";
+        status.textContent = usesEmailCode
+          ? "If this email has an unconfirmed account, a new code is on its way."
+          : "If this email has an unconfirmed account, a confirmation email has been requested. Check your inbox and spam folder.";
       } catch (err) {
         error.textContent = err.message;
       } finally {

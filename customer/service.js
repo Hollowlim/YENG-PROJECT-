@@ -1,7 +1,9 @@
 import { connected, supabase } from "../catalog.js";
 import { createEmailAuth } from "./email-auth.js";
+import { emailVerificationMode } from "../site-config.js";
 import { hashPassword, verifyPassword, itemPoints } from "./model.js";
 export const emailAuth = createEmailAuth({ getClient: supabase, storage: sessionStorage });
+export const usesEmailCode = (import.meta.env.VITE_EMAIL_VERIFICATION_MODE ?? emailVerificationMode) === "code";
 const key = "crownetic.customers.v1",
   session = "crownetic.customer.session";
 function load() {

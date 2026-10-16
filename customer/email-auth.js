@@ -6,7 +6,7 @@ function normalizeEmail(value) {
   return email;
 }
 
-// Supabase owns the codes, expiry, rate limits and sessions. This stores only
+// Supabase owns confirmation, codes, expiry, rate limits and sessions. This stores only
 // the pending address and a UX cooldown; it never stores a password or OTP.
 export function createEmailAuth({ getClient, storage, now = Date.now }) {
   const service = {
@@ -71,7 +71,7 @@ export function createEmailAuth({ getClient, storage, now = Date.now }) {
     async resend(address) {
       const email = normalizeEmail(address);
       if (service.pending()?.email === email && service.remaining() > 0)
-        throw Error("Please wait before requesting another code.");
+        throw Error("Please wait before requesting another confirmation email.");
       const db = await getClient();
       const { error } = await db.auth.resend({ type: "signup", email });
       if (error) throw error;

@@ -11,6 +11,41 @@ let locale = Object.hasOwn(
   ? localStorage.getItem("crownetic.language")
   : "en";
 const copy = {
+  "Confirm your email using the link we send before signing in.": [
+    "Sahkan e-mel anda melalui pautan yang kami hantar sebelum log masuk.",
+    "登录前，请使用我们发送的链接确认邮箱。",
+    "உள்நுழையும் முன் நாங்கள் அனுப்பும் இணைப்பைப் பயன்படுத்தி உங்கள் மின்னஞ்சலை உறுதிசெய்யவும்.",
+  ],
+  "Open the confirmation link in your email.": [
+    "Buka pautan pengesahan dalam e-mel anda.",
+    "打开邮件中的确认链接。",
+    "உங்கள் மின்னஞ்சலில் உள்ள உறுதிப்படுத்தல் இணைப்பைத் திறக்கவும்.",
+  ],
+  "Choose “Confirm email address” in the email, then return here to log in. Check your spam folder too.": [
+    "Pilih “Confirm email address” dalam e-mel, kemudian kembali ke sini untuk log masuk. Semak juga folder spam anda.",
+    "在邮件中选择“Confirm email address”，然后返回此处登录。也请检查垃圾邮件文件夹。",
+    "மின்னஞ்சலில் “Confirm email address” என்பதைத் தேர்ந்தெடுத்து, உள்நுழைய இங்கே திரும்பவும். ஸ்பேம் கோப்புறையையும் பார்க்கவும்.",
+  ],
+  "CONTINUE TO LOG IN": [
+    "TERUSKAN UNTUK LOG MASUK",
+    "继续登录",
+    "உள்நுழையத் தொடரவும்",
+  ],
+  "RESEND EMAIL": [
+    "HANTAR SEMULA E-MEL",
+    "重新发送邮件",
+    "மின்னஞ்சலை மீண்டும் அனுப்பு",
+  ],
+  "If this email has an unconfirmed account, a confirmation email has been requested. Check your inbox and spam folder.": [
+    "Jika e-mel ini mempunyai akaun yang belum disahkan, e-mel pengesahan telah diminta. Semak peti masuk dan folder spam anda.",
+    "如果此邮箱有尚未确认的账户，系统已请求发送确认邮件。请检查收件箱和垃圾邮件文件夹。",
+    "இந்த மின்னஞ்சலில் உறுதிசெய்யப்படாத கணக்கு இருந்தால், உறுதிப்படுத்தல் மின்னஞ்சல் கோரப்பட்டுள்ளது. உங்கள் இன்பாக்ஸ் மற்றும் ஸ்பேம் கோப்புறையைப் பார்க்கவும்.",
+  ],
+  "Please wait before requesting another confirmation email.": [
+    "Sila tunggu sebelum meminta e-mel pengesahan yang lain.",
+    "请稍后再请求确认邮件。",
+    "மற்றொரு உறுதிப்படுத்தல் மின்னஞ்சலைக் கோரும் முன் காத்திருக்கவும்.",
+  ],
   "Email address or username": ["Alamat e-mel atau nama pengguna", "邮箱或用户名", "மின்னஞ்சல் முகவரி அல்லது பயனர்பெயர்"],
   "Verify your email with a code before signing in.": ["Sahkan e-mel anda dengan kod sebelum log masuk.", "登录前请使用验证码验证邮箱。", "உள்நுழையும் முன் குறியீடு மூலம் மின்னஞ்சலை உறுதிசெய்யவும்."],
   "VERIFY YOUR EMAIL.": ["SAHKAN E-MEL ANDA.", "验证你的邮箱。", "மின்னஞ்சலை உறுதிசெய்யவும்."],

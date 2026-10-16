@@ -1,18 +1,55 @@
-# Customer email verification with Supabase and Resend
+# Customer email verification with Supabase
 
-Supabase Auth creates and verifies customer accounts. Resend delivers Supabase's confirmation email through custom SMTP. The browser never calls the Resend API and does not need the Resend SDK or a Resend API key.
+Start with **Supabase's built-in email service and its default confirmation link**. A custom domain, Resend account, SMTP credentials, and a customized email template are not required for this limited sample. The website defaults to `emailVerificationMode = 'link'` in `site-config.js`.
 
-The flow verifies an email when the customer signs up. After confirmation, the customer signs in with their email and password. It does not send a new email code on every login.
+Email verification happens when a customer signs up. After confirmation, the customer signs in with their email and password. The website does not send another email code on every login.
 
-## 1. Prepare the sending domain
+## 1. Test the sample with Supabase's default email
 
-In Resend, add a domain you own and publish the DNS records Resend supplies. Wait for its verification to succeed, then choose a sender address on that verified domain and the sender name **CROWNETIC**. A production sender has not been chosen for this repository. Resend's onboarding/test sender is not suitable for sending to arbitrary customers.
+1. In **Supabase → Authentication → Sign In / Providers → Email**, keep email signups enabled and enable **Confirm email**. Dashboard labels may vary. This server setting is required: an unconfirmed account must not receive a normal password-login session.
+2. Leave **Confirm signup** on its default template containing a confirmation link. Do not replace it with the optional CROWNETIC numeric-code template yet. If that template was already changed to show only `{{ .Token }}`, restore a confirmation-link template before testing link mode; the template and website mode must match.
+3. Use an email address belonging to a member of the Supabase project's organization. The built-in mailer sends only to pre-authorized **organization team addresses**, not to every address entered in **Authentication → Users**. Manage organization members in the **Team** settings. Delivery is subject to Supabase's low rate limits and has no production delivery guarantee.
+4. Open the website, choose **Account → Create an account**, and sign up with that test address. Open the confirmation email and click its link. Return to the original website and log in with the same email and password.
+5. If a message does not arrive, check spam and Supabase Auth logs, confirm the address is an authorized organization-team recipient, and respect the sending limit. A successful request does not prove that an email reached the inbox.
 
-Create a replacement sending API key in Resend. A key shared in a chat should be revoked and replaced. Enter the replacement only into the secure Supabase SMTP password field described below. Do not paste it into JavaScript, a `VITE_` variable, a committed file, or a public hosting setting that is bundled into the frontend.
+Keep **Confirm email** enabled for customers. Manually creating and auto-confirming your own owner account in Supabase is a separate admin setup step; it does not demonstrate customer email delivery.
 
-## 2. Configure Supabase Auth
+### If the email link opens localhost or a page that will not load
 
-In the Supabase Dashboard, open **Authentication** and the **Email** provider settings. Keep email signups enabled and enable **Confirm email**. This server setting is required: an unconfirmed account must not receive a normal password-login session. Browser UI alone cannot enforce email ownership.
+Supabase's **Authentication → URL Configuration → Site URL** controls the default destination after confirmation. `localhost` always refers to the device opening the link. For example, a link opened on a phone cannot reach a development server running only on a laptop at `localhost`.
+
+The Supabase confirmation endpoint may verify the email **before** redirecting to that unavailable address. A failed destination page does not necessarily mean verification failed. Return to the original CROWNETIC website and try logging in first. You can also inspect that user's email-confirmation status in Supabase. If the account is already confirmed, do not keep requesting or reusing confirmation links. If it is still unconfirmed, correct the destination and then request a new email.
+
+For development, use a browser-accessible development URL. For a shared sample, a static host's HTTPS URL is enough; you do not need to buy a custom domain. Set **Site URL** to that storefront and allow only intended development/production addresses in **Redirect URLs**. Do not configure `file://` as an Auth redirect. Opening the downloaded `index.html` can still let you return manually and sign in after verification, but a reachable hosted URL provides a smoother email-link experience.
+
+### If Supabase asks you to set up SMTP before editing a template
+
+There are two different messages. **“Set up custom SMTP”** can be a recommendation about the built-in mailer's limits. **“Set up custom SMTP to edit templates”** can be an actual editing restriction.
+
+Current public Studio source applies this restriction to Free projects created on or after **3 June 2026** without configured custom SMTP or an enabled Send Email hook. Older projects and paid plans are exempt in that source. Dashboard rollout and project eligibility determine the actual behavior. The restriction does not mean you must customize a template to test signup: keep the default confirmation-link email and the website's default `link` mode.
+
+## 2. Connect and build the storefront
+
+Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor query as `postgres`. This combined script handles a fresh database or one already using this project's numbered migrations, preserving stored rows while refreshing named policies and functions. It configures the product-images bucket as public. Run the complete file; expect `CROWNETIC database setup complete`. The latest numbered `001`–`003` files also support reruns, in order; older copies do not. Review an unrelated or custom schema first.
+
+Customer email verification uses Supabase Auth and requires no additional application table. Database setup does not configure email confirmation, SMTP, or redirect URLs; those are separate Dashboard settings.
+
+CROWNETIC's public project URL and publishable key are included in `site-config.js`. To use a different project, copy `.env.example` to the uncommitted `.env.local` file and set both public browser settings from that project:
+
+```dotenv
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+```
+
+Never use a Supabase service-role/secret key here. Restart the development server after environment changes, or run `npm run build` again before publishing the generated `index.html` and `public` assets. Changing `emailVerificationMode` also requires a rebuild. Deploy the shared website over HTTPS.
+
+For a browser-only sample with no real email requests, build with `node scripts/build-sample.js --demo --out-dir .test-site`, or explicitly override both public settings with empty strings in `.env.local`. Local demo accounts do not send emails or claim that a mailbox has been verified.
+
+## 3. Add Resend for customer delivery when ready
+
+The built-in sender is limited to the project team's test recipients. To send confirmation messages to ordinary customer addresses, configure a suitable custom mail provider such as Resend. For Resend production delivery, add a domain you own, publish its required DNS records, wait for verification, and choose a sender on that verified domain. Resend's onboarding/test sender is not suitable for arbitrary customers.
+
+A key shared in chat should be revoked and replaced. Enter the replacement only in Supabase's secure SMTP password field. Do not put it in JavaScript, a `VITE_` variable, a committed file, or any hosting setting bundled into the frontend. The browser never calls Resend and needs neither its SDK nor its API key.
 
 Under **Authentication → Emails → SMTP Settings**, enable custom SMTP and enter:
 
@@ -25,88 +62,53 @@ Under **Authentication → Emails → SMTP Settings**, enable custom SMTP and en
 | Username | `resend` |
 | Password | The replacement Resend API key, entered securely in the Dashboard |
 
-Dashboard section names may change. Review Supabase's authentication email rate limits, OTP expiry, and email OTP length alongside Resend's sending limits. The app's resend cooldown is a usability aid; Supabase must enforce sending limits. Keep production rate limits and abuse protection enabled.
+Review Supabase's sending limits and Resend's limits, and test delivery before opening registration to the public. SMTP does not require switching the website away from link verification: you can keep the default link flow with Resend.
 
-In **Emails → Templates → Confirm signup**, use [confirmation.html](../supabase/templates/confirmation.html) as the HTML body and a subject such as **Your CROWNETIC verification code**. The essential template expression is:
+### Optional: switch to numeric confirmation codes
+
+Only switch after template editing and delivery are configured. In **Emails → Templates → Confirm signup**, use [confirmation.html](../supabase/templates/confirmation.html) with a subject such as **Your CROWNETIC verification code**. Keep the essential expression intact:
 
 ```html
 {{ .Token }}
 ```
 
-Supabase replaces this expression with its one-time numeric code. Leave it intact. This template intentionally uses code entry instead of a confirmation link so customers can return to the existing hash-routed storefront without an authentication callback competing with `#/account` navigation.
+Supabase replaces it with a one-time numeric code. Then change the exported `emailVerificationMode` in `site-config.js` from `'link'` to `'code'` and rebuild. The optional `VITE_EMAIL_VERIFICATION_MODE` environment setting takes precedence over `site-config.js`; if it is set, change it to `'code'` or remove it when switching. Restart the development server after environment changes. Verify the configured OTP length and expiry. A default confirmation-link email does not automatically contain the numeric code expected by code mode.
 
-Set **Authentication → URL Configuration → Site URL** to the deployed HTTPS storefront URL. Allow only intended development and production callback URLs in **Redirect URLs** for any other auth flows that use links. Never use `file://` as a production callback. If confirmation or password-reset links are introduced later, disable email click tracking/link rewriting for those emails and implement the relevant callback and recovery screens; they are separate from this code-entry flow.
+Code verification uses `supabase.auth.verifyOtp({ email, token: code, type: 'email' })`. The website opens the account dashboard only after Supabase returns a confirmed user and valid session. Invalid, expired, or reused codes must not grant access.
 
-## 3. Connect and build the storefront
+## Account and resend behavior
 
-Run the complete [supabase/setup.sql](../supabase/setup.sql) in a new SQL Editor query as `postgres`. This combined script handles a fresh database or one already using this project's numbered migrations, preserving stored rows while refreshing named policies and functions. It configures the product-images bucket as public. Run the complete file; expect `CROWNETIC database setup complete`. The latest numbered `001`–`003` files also support reruns, in order; older copies do not. The combined file remains the simplest setup route. Review an unrelated or custom schema first.
+Signup uses `supabase.auth.signUp` with **Confirm email** enabled. The website remembers only the pending address and resend time, never the password or an entered code. A signup response that grants an immediate session is rejected as a configuration safeguard; browser checks do not replace Supabase's server-side confirmation setting.
 
-Customer email verification itself uses Supabase Auth and requires no additional application table. Database setup does not enable email confirmation or SMTP; configure those Dashboard settings separately.
+Resending an existing signup confirmation uses `supabase.auth.resend({ type: 'signup', email })` in either mode. The app's 60-second cooldown is a usability aid; Supabase must enforce actual sending limits. Provider errors remain errors, and an accepted send request is not a delivery guarantee. Try logging in after following a link before requesting another one, particularly if its redirect destination failed.
 
-CROWNETIC’s public project URL and publishable key are already included in `site-config.js`. To use a different project, copy `.env.example` to the uncommitted `.env.local` file and set both public browser settings from that project:
+Confirmed customers use `signInWithPassword({ email, password })`. The `email_not_confirmed` response opens confirmation guidance. Other login failures must not be treated as proof that the email is unconfirmed. Do not replace this flow with `signInWithOtp` unintentionally: that would introduce passwordless login with different behavior.
 
-```dotenv
-VITE_SUPABASE_URL=
-VITE_SUPABASE_PUBLISHABLE_KEY=
-```
+Password recovery is a separate flow. Before adding a public **Forgot password** action, configure and test its template, redirect allowlist, recovery-session handling, and password-update page. Signup confirmation does not implement password reset.
 
-Never use a Supabase service-role/secret key here. Restart the development server after changing environment settings, or run `npm run build` again before publishing the generated `index.html` and `public` assets. Deploy over HTTPS.
+## Validation before public registration
 
-For a browser-only sample, build with `--demo --out-dir .test-site`, or explicitly override both public settings with empty strings in `.env.local`. The local demo remains browser-only. It does not send verification emails or claim that a customer's mailbox has been verified.
-
-## Account flow and SDK calls
-
-1. Submit the customer's name, email, and password with `supabase.auth.signUp`. Keep **Confirm email** enabled so the signup response has no authenticated session until verification succeeds.
-2. Show the confirmation screen for the submitted email. Do not save the password or the received code in browser storage. The pending email may be retained to resume the screen after navigation.
-3. Submit the code to Supabase:
-
-   ```js
-   const { data, error } = await supabase.auth.verifyOtp({
-     email,
-     token: code,
-     type: 'email',
-   });
-   ```
-
-   Show success and open the account dashboard only when Supabase returns a valid session. The SDK persists that session. Invalid, expired, or already-used codes must leave the customer on the confirmation screen.
-
-4. The resend action for an account that has already started signup is:
-
-   ```js
-   const { error } = await supabase.auth.resend({
-     type: 'signup',
-     email,
-   });
-   ```
-
-   Keep the action disabled while sending and during the displayed cooldown. A server rate-limit response must remain visible and must not be reported as successful delivery. A successful response means the request was accepted, not that the recipient's mail provider delivered it.
-
-5. Confirmed customers use `signInWithPassword({ email, password })`. If Supabase reports `email_not_confirmed`, offer the confirmation screen and a resend action. Never treat an arbitrary login failure as evidence that an email is unconfirmed.
-
-The installed Supabase SDK documents `type: 'email'` for email-code verification. The separate resend API still requires `type: 'signup'` for a signup confirmation. Do not replace this flow with `signInWithOtp` unintentionally: that would introduce passwordless login with different account-creation and resend behavior.
-
-Password recovery is a separate flow. Before enabling a public **Forgot password** action, configure and test its recovery template, redirect allowlist, recovery-session handling, and password-update page. The signup verification screen does not implement password reset.
-
-## Before enabling customer email delivery
-
-- Use an inbox you control to create a new account. Confirm that the email arrives with the correct sender and subject, the code is readable, and SPF/DKIM checks pass. Check spam folders and Resend's delivery logs if it does not arrive.
-- Attempt password login before verification. Supabase must reject it. Submit the correct code, confirm the account dashboard opens, then sign out and sign in with the password.
-- Test a wrong code, a code after the configured expiry, and reuse of an already-verified code. No failed verification may create a session.
-- Test resend cooldown, Supabase rate-limit errors, sending failures, and correcting the email address. Verify which code remains valid after a resend against the project's configured Auth behavior; do not promise that older codes remain valid.
-- Refresh the confirmation screen, change languages, and navigate away and back. Keep pending email state without retaining a password or code. Test the form with keyboard and mobile input.
-- Test signup with an existing address without exposing account existence unnecessarily. Test two accounts to confirm profile and loyalty records remain isolated by row-level security.
-- Revoke any exposed key, confirm the replacement is stored only in the SMTP settings, and inspect the production HTML/JavaScript for accidental secrets. Test sending after rotation.
-- Confirm the deployed URL and any recovery callbacks use the correct HTTPS domain. Test the production build against the actual Supabase project, rather than relying on demo-mode tests.
+- With an authorized test inbox, verify that the default link email arrives, login is rejected before confirmation, and password login succeeds after following the link. Test returning to the original site after an unavailable redirect, including opening the email on a phone.
+- Check invalid, expired, and already-used confirmation links. Verify resend cooldown and server-rate-limit errors. Do not promise an older link or code remains valid after a resend.
+- Refresh the confirmation screen, change languages, and navigate away and back. Confirm that no password or verification code is retained in browser storage.
+- Test signup with an existing address without unnecessarily exposing account existence. Test two accounts to confirm profile and reward records remain isolated by RLS.
+- Before enabling public recipients, configure the mail provider and verify delivery from the intended sender, including SPF/DKIM and spam handling. If code mode is enabled, test the matching template, a valid code, invalid/expired codes, and confirmed-session requirements.
+- Revoke exposed credentials, store replacement SMTP credentials securely, and inspect production HTML/JavaScript for accidental secrets. Confirm the deployed HTTPS URL and any recovery callbacks.
 
 ## Validation status and references
 
-Live Supabase configuration and Resend delivery have not been verified in this workspace. No real verification email was sent. Direct requests to the external documentation were blocked by the workspace network proxy during implementation, so the Dashboard labels and current provider limits should be checked against the official documentation when configuring the account. SDK call signatures were checked against the installed `@supabase/auth-js` source.
+Read-only checks reached this project's Supabase API and confirmed that email signup and email confirmation are enabled. Those checks did not create an account, send email, inspect SMTP credentials, or prove delivery. Automated Auth tests use mocked responses. Live email delivery, the project's template-editing eligibility, signed-in account/admin operations, and a complete email-link journey remain to be checked against the actual hosted project.
 
-- [Resend: send with Supabase SMTP](https://resend.com/docs/send-with-supabase-smtp)
-- [Resend SMTP](https://resend.com/docs/smtp)
+The built-in mailer limitations and Studio restriction above were checked against Supabase's public documentation/source; Dashboard labels and limits can change.
+
 - [Supabase custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp)
+- [Official SMTP guide source](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/auth/auth-smtp.mdx)
+- [Studio template restriction logic](https://github.com/supabase/supabase/blob/master/apps/studio/components/interfaces/Auth/EmailTemplates/EmailTemplates.utils.ts)
+- [Studio template restriction message](https://github.com/supabase/supabase/blob/master/apps/studio/components/interfaces/Auth/EmailTemplates/CustomEmailTemplateRestrictionAdmonition.tsx)
 - [Supabase email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
+- [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
 - [Supabase verifyOtp](https://supabase.com/docs/reference/javascript/auth-verifyotp)
 - [Supabase resend](https://supabase.com/docs/reference/javascript/auth-resend)
-- [Supabase redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls)
 - [Supabase authentication rate limits](https://supabase.com/docs/guides/auth/rate-limits)
+- [Resend: send with Supabase SMTP](https://resend.com/docs/send-with-supabase-smtp)
+- [Resend SMTP](https://resend.com/docs/smtp)

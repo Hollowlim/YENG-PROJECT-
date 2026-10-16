@@ -18,7 +18,7 @@ test('downloadable build uses the public project settings and keeps live calls m
     await route.fulfill({ contentType: 'application/json', body: '[]' });
   });
   await page.goto('/connected-fixture.html#/signup');
-  await expect(page.getByText('Verify your email with a code before signing in.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Confirm your email using the link we send before signing in.', { exact: true })).toBeVisible();
   await expect(page.getByText('SAMPLE ACCOUNT', { exact: false })).toHaveCount(0);
   await page.goto('/connected-fixture.html#/shop');
   await expect(page.getByRole('heading', { name: 'Something good is coming.' })).toBeVisible();
